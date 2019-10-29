@@ -133,7 +133,6 @@ On all platforms (Linux, Windows 7 or greater, and MAC OS X), we recommend a pre
     $ pip install .
     ```
 
-
 6. Check if PySIT has been successfully installed. Please open a python by
 
    ```sh
@@ -146,7 +145,7 @@ On all platforms (Linux, Windows 7 or greater, and MAC OS X), we recommend a pre
    $ import pysit
    ```
 
-   If there are no warnings or errors on the screen, then congratulations, you have successfully installed the PySIT toolbox. Please feel free to work with this powerful toolbox from the [examples].    
+   If there are no warnings or errors on the screen, then congratulations, you have successfully installed the PySIT toolbox. Please feel free to work with this powerful toolbox from the [examples].
 
 [Continuum IO’s Anaconda]: <https://www.anaconda.com/>
 [Enthought’s Canopy]: <https://www.enthought.com/product/canopy/>
