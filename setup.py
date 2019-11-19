@@ -114,6 +114,8 @@ setup(
                       'pyamg>=4.0.0',
                       'obspy>=1.1.0',
                       'matplotlib>=2.2.3',
+                      'petsc>=3.12.0',
+                      'petsc4py>=3.12.0'
                       # Note: mpi4py is not a strict requirement
                       ],
     author="Russell J. Hewett",

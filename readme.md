@@ -38,7 +38,6 @@ On all platforms (Linux, Windows 7 or greater, and MAC OS X), we recommend a pre
     cd ~/Download
     ```
 
-
     Then, install Miniconda3 by executing the following command for MAC OS users:
 
     ```sh
@@ -87,29 +86,15 @@ On all platforms (Linux, Windows 7 or greater, and MAC OS X), we recommend a pre
 
     where `YourComputerName` stands for the actual name of your computer.
 
-3. Install ObsPy by pip. We assume that you already have **pip** installed. If not, please go to the [webpage of pip] to install **pip** first. With **pip** installed, you can install ObsPy by executing the following command:
+3. (Optionnal but recommended) Install mpi4py:
 
     ```sh
-    $ pip install obspy
+    $ pip install mpi4py
     ```
 
-4. Install necessary external softwares [PETSC] and [petsc4py]. Assume that you clone or download the PySIT package at directory `/PATHTOPYSIT`. First go to the directory by executing the following command:
-
-    ```sh
-    cd /PATHTOPYSIT
-    ```
-
-    Then, execute the following commands to install PETSC and petsc4py. For linux users please use:
-
-    ```sh
-    pip install petsc
-    pip install petsc4py
-    ```
+4. For MAC OS users: Install necessary external softwares [PETSC] and [petsc4py]. (May be useless)
 
     Petsc has several dependencies such as gcc, gfortran or lapack. Install them with your package manager if needed.
-
-    For MAC OS users:
-    The former linux procedure should work but it has not been tested yet.
 
     ```sh
     $ source ./install_petsc4py_OSx.sh
@@ -133,6 +118,9 @@ On all platforms (Linux, Windows 7 or greater, and MAC OS X), we recommend a pre
     $ pip install .
     ```
 
+    Errors will occur while installing PETSC and petsc4py but have no impact on the final installation. See [here](https://bitbucket.org/petsc/petsc4py/issues/132/attributeerror-module-petsc-has-no) for more info.
+    If you already have a working installation of PETSC, you can follow [these instructions](https://petsc4py.readthedocs.io/en/stable/install.html) to install manually petsc4py.
+    
 6. Check if PySIT has been successfully installed. Please open a python by
 
    ```sh
