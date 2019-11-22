@@ -92,15 +92,7 @@ On all platforms (Linux, Windows 7 or greater, and MAC OS X), we recommend a pre
     $ pip install mpi4py
     ```
 
-4. For MAC OS users: Install necessary external softwares [PETSC] and [petsc4py]. (May be useless)
-
-    Petsc has several dependencies such as gcc, gfortran or lapack. Install them with your package manager if needed.
-
-    ```sh
-    $ source ./install_petsc4py_OSx.sh
-    ```
-
-5. Install the PySIT toolbox. First, make sure that you are in the PySIT directory by executing the following command:
+4. Install the PySIT toolbox. First, make sure that you are in the PySIT directory by executing the following command:
 
     ```sh
     $ cd /PATHTOPYSIT
@@ -121,7 +113,7 @@ On all platforms (Linux, Windows 7 or greater, and MAC OS X), we recommend a pre
     Errors will occur while installing PETSC and petsc4py but have no impact on the final installation. See [here](https://bitbucket.org/petsc/petsc4py/issues/132/attributeerror-module-petsc-has-no) for more info.
     If you already have a working installation of PETSC, you can follow [these instructions](https://petsc4py.readthedocs.io/en/stable/install.html) to install manually petsc4py.
     
-6. Check if PySIT has been successfully installed. Please open a python by
+5. Check if PySIT has been successfully installed. Please open a python by
 
    ```sh
    $ python
