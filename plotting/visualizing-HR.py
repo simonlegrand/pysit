@@ -22,8 +22,6 @@ import matplotlib.pyplot as plt
 from scipy.io import loadmat
 from scipy import signal
 
-from pysit import *
-from pysit.gallery import horizontal_reflector
 
 # plt.rcParams["font.size"] = '22'
 # plt.rcParams['figure.figsize'] = 20,10
