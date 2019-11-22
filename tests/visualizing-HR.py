@@ -1,7 +1,19 @@
-# Std import block
+"""
+Python script to plot results of pySIT run.
+
+Use
+---
+
+        python visualize.py <directory>
+
+where directory contains the results of a run.
+
+"""
 import os
 import sys
 from datetime import datetime
+import argparse
+import re
 
 import numpy as np
 import pickle
@@ -16,6 +28,8 @@ from pysit import *
 plt.rcParams["font.size"] = '22'
 plt.rcParams['figure.figsize'] = 20,10
 plt.rcParams['lines.linewidth'] = 4
+
+
 
 # Build path for saving figures
 RootDir = ''
@@ -206,51 +220,6 @@ for i in range(trc):
         plt.grid(True)
         plt.legend()
         fig.savefig(path_fig+'/velocity_file_'+str(ntrc)+'.png')
-
-# ############################## verlocity profiles - iterations #################################
-# for i in range(trc):
-#         fig = plt.figure(figsize=(16,20))
-#         ntrc = (trc + i) * delta_x + 1
-#         zz = np.arange(np.shape(v0)[0]) * m.z.delta
-
-#         ####################### Here change number of iter $$$$$$$$$$$$$$$$$$$$$$$
-#         ##########################################################################
-#         plt.plot(vtrue[:, ntrc], zz, 'b', label='True')
-#         plt.plot(v1[:, ntrc], zz, 'r', label='iter#1')
-#         #plt.plot(v2[:, ntrc], zz, 'c', label='iter#50')
-#         plt.plot(v3[:, ntrc], zz, 'y', label='iter#100')
-#         #plt.plot(v4[:, ntrc], zz, 'm', label='iter#150')
-#         plt.plot(v5[:, ntrc], zz, 'k', label='iter#200')
-#         plt.plot(v6[:, ntrc], zz, 'g', label='iter#300')
-#         plt.xlabel('velocity [km/s]')
-#         plt.ylabel('Depth [km]')
-#         plt.title('Traces-'+str(ntrc)+' comparison along z-axis')
-#         ax = plt.gca()
-#         ax.set_ylim(ax.get_ylim()[::-1])
-#         plt.grid(True)
-#         plt.legend()
-#         fig.savefig(path_fig+'/iter_velocity_file_'+str(ntrc)+'.png')
-
-# ################################################# models - iterations ######################################################
-# clim = C.min(),C.max()
-
-# fig2, ax2 = plt.subplots(figsize=(32,12))
-# aa=vis.plot(v2.T, m, clim=clim)
-# ax2.set(xlabel='Offset [km]', ylabel='Depth [km]', title='Inverted Model')
-# ax2.set_aspect('auto')
-# # Make a colorbar for the ContourSet returned by the contourf call.
-# cbar = fig2.colorbar(aa)
-# cbar.ax.set_ylabel('Velocity [km/s]')
-# fig2.savefig(path_fig+'/model-iter#100.png')
-
-# fig2, ax2 = plt.subplots(figsize=(32,12))
-# aa=vis.plot(v4.T, m, clim=clim)
-# ax2.set(xlabel='Offset [km]', ylabel='Depth [km]', title='Inverted Model')
-# ax2.set_aspect('auto')
-# # Make a colorbar for the ContourSet returned by the contourf call.
-# cbar = fig2.colorbar(aa)
-# cbar.ax.set_ylabel('Velocity [km/s]')
-# fig2.savefig(path_fig+'/model-iter#300.png')
 
 #################### Adjoint source -- L2 ####################################
 adj_l2 = wavefield_true - wavefield_initial
