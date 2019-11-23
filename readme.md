@@ -78,10 +78,10 @@ On all platforms (Linux, Windows 7 or greater, and MAC OS X), we recommend a pre
     source activate pysit
     ```
 
-    If the environment is created successfully, you would see the following sentence at the left bottom of your terminal:
+    If the environment is created successfully, you should see the following sentence at the left bottom of your terminal:
 
     ```sh
-    $(pysit)YourComputerName:
+    (pysit)YourComputerName:
     ```
 
     where `YourComputerName` stands for the actual name of your computer.
@@ -89,13 +89,13 @@ On all platforms (Linux, Windows 7 or greater, and MAC OS X), we recommend a pre
 3. (Optionnal but recommended) Install mpi4py:
 
     ```sh
-    $ pip install mpi4py
+    pip install mpi4py
     ```
 
 4. Install the PySIT toolbox. First, make sure that you are in the PySIT directory by executing the following command:
 
     ```sh
-    $ cd /PATHTOPYSIT
+    cd /PATHTOPYSIT
     ```
 
     If you plan to modify PySIT python parts you can install it with this command
@@ -107,7 +107,7 @@ On all platforms (Linux, Windows 7 or greater, and MAC OS X), we recommend a pre
     It will sparse you from reinstalling PySIT everytime you modify it. Otherwise type:
 
     ```sh
-    $ pip install .
+    pip install .
     ```
 
     Errors will occur while installing PETSC and petsc4py but have no impact on the final installation. See [here](https://bitbucket.org/petsc/petsc4py/issues/132/attributeerror-module-petsc-has-no) for more info.
