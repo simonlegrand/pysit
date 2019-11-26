@@ -91,7 +91,7 @@ if __name__ == '__main__':
 
     result = invalg(shots, initial_value, nsteps,
                     line_search=line_search,
-                    status_configuration=status_configuration, verbose=True)
+                    status_configuration=status_configuration, verbose=True, write=True)
 
     print('...run time:  {0}s'.format(time.time()-tt))
 
