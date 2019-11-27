@@ -42,11 +42,11 @@ if __name__ == '__main__':
                                    )
 
     # Define and configure the wave solver
-    trange = (0.0,1.5)
+    t_range = (0.0,1.5)
 
     solver = ConstantDensityAcousticWave(m,
                                          spatial_accuracy_order=2,
-                                         trange=trange,
+                                         trange=t_range,
                                          kernel_implementation='cpp')
 
     initial_model = solver.ModelParameters(m,{'C': C0})
@@ -97,7 +97,7 @@ if __name__ == '__main__':
 
     initial_value.data = result.C
     C_cut = initial_value.without_padding().data
-    C_inverted = C_cut.reshape(m.shape(as_grid=True)).transpose()
+    C_inverted = C_cut.reshape(m.shape(as_grid=True))
 
     ####################################################################################################
     # Save wavefield
@@ -109,26 +109,24 @@ if __name__ == '__main__':
     with open('mesh.p', 'wb') as f:
         pickle.dump(m, f)
 
-    vals = list()
-    for k,v in list(invalg.objective_history.items()):
-        vals.append(v)
-    conv_vals = np.array(vals)
+    conv_vals = np.array([v for k,v in list(invalg.objective_history.items())])
 
     initial_value.data = invalg.gradient_history[0].data
-    gradient = initial_value.without_padding().data.reshape(m.shape(as_grid=True)).transpose()
+    gradient = initial_value.without_padding().data.reshape(m.shape(as_grid=True))
 
     # ns = int(np.shape(wavefield_true)[0]/2)
 
     output = {'conv': conv_vals,
               'inverted': C_inverted,
-              'true': C.reshape(m.shape(as_grid=True)).transpose(),
-              'initial': C0.reshape(m.shape(as_grid=True)).transpose(),
+              'true': C.reshape(m.shape(as_grid=True)),
+              'initial': C0.reshape(m.shape(as_grid=True)),
               'wavefield_true': wavefield_true,
               'wavefield_initial': wavefield_initial,
               'wavefield_inverted': wavefield_inverted,
               'gradient': gradient,
-              'x_length': d.x.rbound,
-              't_record': trange,
+              'x_range': [d.x.lbound, d.x.rbound],
+              'z_range': [d.z.lbound, d.z.rbound],
+              't_range': t_range
               }
 
     sio.savemat('./output.mat', output)
