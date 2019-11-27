@@ -18,7 +18,7 @@ import re
 import numpy as np
 import pickle
 import matplotlib as mpl
-mpl.use('Agg')
+#mpl.use('Agg')
 import matplotlib.pyplot as plt
 from scipy.io import loadmat
 from scipy import signal
@@ -43,7 +43,7 @@ def save_convergence_plot(conv, output_dir: str):
     fig.savefig(os.path.join(output_dir, 'conv.png')) 
 
 
-def save_model_plot(model, kind: str, mesh, clim: list, output_file: str):
+def save_velocity_profile_plot(model, kind: str, mesh, clim: list, output_file: str):
     """
     Save model into file.
 
@@ -61,13 +61,13 @@ def save_model_plot(model, kind: str, mesh, clim: list, output_file: str):
     fig.savefig(output_file)
 
 
-def save_gradient_plot(gradient, output_dir: str):
+def save_gradient_plot(gradient, mesh, output_dir: str):
     """
     Save gradient.png into output_dir.
     """
     clim = gradient.min(),gradient.max()
     fig, ax = plt.subplots(figsize=(32,12))
-    aa=vis.plot(gradient.T, m, clim=clim)
+    aa=vis.plot(gradient, mesh, clim=clim)
     ax.set(xlabel='Offset [km]', ylabel='Depth [km]', title='Gradient - iter#1')
     ax.set_aspect('auto')
     # Make a colorbar for the ContourSet returned by the contourf call.
@@ -95,16 +95,16 @@ def save_wavefield_plot(wavefield, kind: str, ext: list, clim: list, output_dir:
 
 
 
-def save_wavefields_receiver_plot(wfrs, output_dir: str):
+def save_wavefields_receiver_plot(wfrs, tt, output_dir: str):
     """
     Save wavefields receiver into output_dir.
     """
     fig = plt.figure()
-    ntr = int(np.shape(wavefields['True'])[1]/3 + 1)
-    tt = (np.arange(np.shape(wavefields['True'])[0]) * dt).transpose()
-    plt.plot(tt, wavefields['True'][:, ntr], 'b', label='data-observed')
-    plt.plot(tt, wavefields['Initial'][:, ntr], 'g', label='data-initial')
-    plt.plot(tt, wavefields['Inverted'][:, ntr], 'r', label='data-inverted')
+    ntr = int(np.shape(wfrs['True'])[1]/3 + 1)
+    #tt = (np.arange(np.shape(wfrs['True'])[0]) * dt).transpose()
+    plt.plot(tt, wfrs['True'][:, ntr], 'b', label='data-observed')
+    plt.plot(tt, wfrs['Initial'][:, ntr], 'g', label='data-initial')
+    plt.plot(tt, wfrs['Inverted'][:, ntr], 'r', label='data-inverted')
     plt.xlabel('Time [s]')
     plt.title('Wavefield-receiver-'+str(ntr))
     plt.grid(True)
@@ -115,48 +115,21 @@ def save_wavefields_receiver_plot(wfrs, output_dir: str):
 
 def save_wavefields_time_plot(wfrs, t_range, output_dir:str):
     """
-    Save wavefields time into output_dir.
+    Save wavefields time into output_dir x, t
     """
     fig = plt.figure()
-    ntr = int(np.shape(wavefields['True'])[0]/t_range[1] + 1)
+    ntr = int(np.shape(wfrs['True'])[0]/t_range[1] + 1)
     aaaa = np.round(ntr * dt, 1)
-    xx = np.arange(np.shape(wavefields['True'])[1]) * m.x.delta
-    plt.plot(xx, wavefields['True'][ntr, :], 'b', label='data-observed')
-    plt.plot(xx, wavefields['Initial'][ntr, :], 'g', label='data-initial')
-    plt.plot(xx, wavefields['Inverted'][ntr, :], 'r', label='data-inverted')
+    xx = np.arange(np.shape(wfrs['True'])[1]) * m.x.delta
+    plt.plot(xx, wfrs['True'][ntr, :], 'b', label='data-observed')
+    plt.plot(xx, wfrs['Initial'][ntr, :], 'g', label='data-initial')
+    plt.plot(xx, wfrs['Inverted'][ntr, :], 'r', label='data-inverted')
     plt.xlabel('Receivers [km]')
     plt.title('Wavefield-time-'+str(aaaa)+'s')
     plt.grid(True)
     plt.legend()
     filepath = os.path.join(output_dir, 'wavefield_time_'+str(aaaa)+'s.png')
     fig.savefig(filepath)
-
-
-def save_velocity_profiles_plot(vms, mesh, output_dir: str):
-    """
-    Save velocity profiles
-    """
-    trc = int(5)
-    delta_x = (mesh.x.n-1)/(2*trc)
-
-    for i in range(trc):
-        
-        ntrc = (int((mesh.x.n-1)/2 + i*delta_x)) + 1
-        zz = np.arange(np.shape(vms['Initial'])[0]) * mesh.z.delta
-
-        fig = plt.figure(figsize=(16,20))
-        plt.plot(vms['Initial'][:, ntrc], zz, 'g', label='Vp-initial')
-        plt.plot(vms['True'][:, ntrc], zz, 'b', label='Vp-true')
-        plt.plot(vms['Inverted'][:, ntrc], zz, 'r', label='Vp-inverted')
-        plt.xlabel('velocity [km/s]')
-        plt.ylabel('Depth [km]')
-        plt.title('Traces-'+str(ntrc)+' comparison along z-axis')
-        ax = plt.gca()
-        ax.set_ylim(ax.get_ylim()[::-1])
-        plt.grid(True)
-        plt.legend()
-        filepath = os.path.join(output_dir,'velocity_file_'+str(ntrc)+'.png')
-        fig.savefig(filepath)
 
 
 def save_adjoint_source_plot(adj, ext: list, clim: list, output_dir: str):
@@ -194,31 +167,50 @@ def parse_cmd_line() -> str:
 
     return os.path.abspath(args.directory)
 
-# ############################## verlocity profiles - iterations #################################
-# for i in range(trc):
-#         fig = plt.figure(figsize=(16,20))
-#         ntrc = (trc + i) * delta_x + 1
-#         zz = np.arange(np.shape(v0)[0]) * m.z.delta
 
-#         ####################### Here change number of iter $$$$$$$$$$$$$$$$$$$$$$$
-#         ##########################################################################
-#         plt.plot(vtrue[:, ntrc], zz, 'b', label='True')
-#         plt.plot(v1[:, ntrc], zz, 'r', label='iter#1')
-#         #plt.plot(v2[:, ntrc], zz, 'c', label='iter#50')
-#         plt.plot(v3[:, ntrc], zz, 'y', label='iter#100')
-#         #plt.plot(v4[:, ntrc], zz, 'm', label='iter#150')
-#         plt.plot(v5[:, ntrc], zz, 'k', label='iter#200')
-#         plt.plot(v6[:, ntrc], zz, 'g', label='iter#300')
-#         plt.xlabel('velocity [km/s]')
-#         plt.ylabel('Depth [km]')
-#         plt.title('Traces-'+str(ntrc)+' comparison along z-axis')
-#         ax = plt.gca()
-#         ax.set_ylim(ax.get_ylim()[::-1])
-#         plt.grid(True)
-#         plt.legend()
-#         fig.savefig(path_fig+'/iter_velocity_file_'+str(ntrc)+'.png')
+def save_velocity_traces(V: dict, X, Z, n_traces: int, file_base_name: str, output_dir: str):
+        """
+        Compute equidistant traces along x-axis of velocity profiles
+        and save them on the same plot in a file located in output_dir.
 
+        Parameters
+        ----------
+        V : dict
+            Velocity profiles
+        X : 1D numpy array
+            x coordinates samples
+        Z : 1D numpy array
+            z coordinates samples
+        n_traces : int
+            number of equidistant traces along x-axis to save
+        file_base_name : str
+            Prefix of the file name, x coordinate of the trace is
+            appended.
+        output_dir : str
+            Directory where figures are saved
+        
+        """
+        nx = len(X)
 
+        # Compute traces indices along x
+        idx_traces = np.linspace(0, nx-1, n_traces, dtype=int)
+
+        for idx in idx_traces:
+            fig = plt.figure(figsize=(16,20))
+
+            # x value corresponding to idx
+            x = np.round(X[idx],2)
+
+            for vm in velocity_models:
+                plt.plot(velocity_models[vm][idx,:],Z, label='V-trace'+vm)
+
+            plt.xlabel('velocity [km/s]')
+            plt.ylabel('Depth [km]')
+            plt.ylim(max(Z),min(Z))
+            plt.grid(True)
+            plt.legend()
+            filepath = os.path.join(output_dir, file_base_name+str(x)+'.png')
+            fig.savefig(filepath)
 
 
 def create_plot_dir(base_dir: str) -> str:
@@ -226,33 +218,40 @@ def create_plot_dir(base_dir: str) -> str:
     Create directory to store plots in the base_dir
     and returns it.
 
+    Parameters
+    ----------
     base_dir: str
         Directory where results are
     """
-    time_str = datetime.now().strftime('%Y%b%d-%H%M%S') 
-    plot_dir = os.path.join(res_dir, 'fig_'+time_str)
+    # time_str = datetime.now().strftime('%Y%b%d-%H%M%S') 
+    # plot_dir = os.path.join(res_dir, 'fig_'+time_str)
+    plot_dir = os.path.join(res_dir, 'plot')
     if not os.path.exists(plot_dir):
         os.makedirs(plot_dir)
 
     return plot_dir
 
 
-def get_velocity_profiles(base_dir: str, mesh):
+def get_velocity_profiles(base_dir: str, pattern: str, mesh):
     """
     Parse base_dir to get the velocity profiles.
     Store them into a dict which keys are the
     iterations numbers.
 
+    Parameters
+    ----------
     base_dir: str
         Directory where results are
+    pattern: str
+        Regular expression that matches velocity profiles file
+        names from different iterations
     """
-    res_name_re = re.compile('^x_[0-9]+.mat')
-
+    compiled_pattern = re.compile(pattern)
     # List of results files mathching the reg exp.
-    res_file_list = [os.path.join(base_dir,x) for x in os.listdir(base_dir) if res_name_re.match(x)]
-    print(res_file_list)
+    res_file_list = [os.path.join(base_dir,x) for x in os.listdir(base_dir) if compiled_pattern.match(x)]
+
     # Iteration number list
-    it_nbrs = [x.split('.')[0][2:] for x in res_file_list]
+    it_nbrs = ['iter_'+x.split('.')[0][2:] for x in res_file_list]
 
     X = [loadmat(x) for x in res_file_list]
     V = [np.reshape(x['data'],mesh.shape(as_grid=True)).transpose() for x in X]
@@ -274,13 +273,17 @@ if __name__ == "__main__":
 
     output = loadmat(os.path.join(res_dir, 'output.mat'))
 
-    # V = get_velocity_profiles(res_dir, m)
-    # print(V)
+    # Generate domain coordinate samples
+    x_range = output['x_range'][0]
+    z_range = output['z_range'][0]
+    nx, nz = np.shape(output['true'])
+    X_coord = np.linspace(x_range[0], x_range[1], nx)
+    Z_coord = np.linspace(z_range[0], z_range[1], nz)
 
-    #### Convergence
-    save_convergence_plot(output['conv'], p_dir)
-
-    #### Velocity models
+    #### Velocity models c(x, z)
+    # True = direct problem results
+    # Initial = Initialization 
+    # Inverted = Last iteration result
     velocity_models = {
         'True': output['true'],
         'Initial': output['initial'],
@@ -289,55 +292,55 @@ if __name__ == "__main__":
     clim = velocity_models['True'].min(),velocity_models['True'].max()
     for vm in velocity_models:
         abs_path_name = os.path.join(p_dir,'model-'+vm+'.png')
-        save_model_plot(velocity_models[vm], vm, m, clim, abs_path_name)
+        save_velocity_profile_plot(velocity_models[vm], vm, m, clim, abs_path_name)
 
-    #### Wavefields
+    #### Velocity traces
+    n_tr = 5
+    
+    # Velocity traces from normal models
+    save_velocity_traces(velocity_models, X_coord, Z_coord, n_tr, 'velocity_trace_', p_dir)
+
+    # Velocity traces at different iterations
+    res_name = '^x_[0-9]+.mat'
+    V = get_velocity_profiles(res_dir, res_name, m)
+    save_velocity_traces(V, X_coord, Z_coord, n_tr, 'iter_velocity_trace_', p_dir)
+
+    #### Convergence
+    save_convergence_plot(output['conv'], p_dir)
+
+    #### Wavefields w(t, x)
+    # True = direct problem results
+    # Initial = Initialization 
+    # Inverted = Last iteration result
     wavefields = {
         'True': output['wavefield_true'],
         'Initial': output['wavefield_initial'],
         'Inverted': output['wavefield_inverted']
     }
     # Re-sampling data on time
-    shape_dobs = np.shape(wavefields['True'])
-    wavefields['Inverted'] = signal.resample(wavefields['Inverted'], shape_dobs[0])
-    wavefields['Initial'] = signal.resample(wavefields['Initial'], shape_dobs[0])
+    nt = np.shape(wavefields['True'])[0]
+    wavefields['Inverted'] = signal.resample(wavefields['Inverted'], nt)
+    wavefields['Initial'] = signal.resample(wavefields['Initial'], nt)
 
-    x_length = output['x_length']
-    trange = output['t_record'][0]
-    dt = trange[1]/shape_dobs[0]
-    t_smp = np.linspace(trange[0], trange[1], shape_dobs[0])
-    extent = [0.0, x_length, t_smp[-1], 0.0]
+    t_range = output['t_range'][0]
+    T_coord = np.linspace(t_range[0], t_range[1], nt)
+    extent = [min(X_coord), max(X_coord), max(T_coord), min(T_coord)]
     clim=[-.05, .05]
     for wf in wavefields:
         save_wavefield_plot(wavefields[wf], wf, extent, clim, p_dir)
 
-    save_wavefield_plot(wavefields['True']-wavefields['Inverted'], 'diff', extent, clim2, p_dir)
+    save_wavefield_plot(wavefields['True']-wavefields['Inverted'], 'diff', extent, clim, p_dir)
 
     #### Gradient
-    save_gradient_plot(output['gradient'], p_dir)
+    save_gradient_plot(output['gradient'].T, m, p_dir)
 
     #### Wavefields - receiver
-    save_wavefields_receiver_plot(wavefields, p_dir)
+    save_wavefields_receiver_plot(wavefields, T_coord, p_dir)
 
     #### Wavefields -time
-    save_wavefields_time_plot(wavefields, trange, p_dir)
+    #save_wavefields_time_plot(wavefields, trange, p_dir)
 
-    #### Velocity profiles
-    save_velocity_profiles_plot(velocity_models, m, p_dir)
-
-    #### Adjoint source
+    ### Adjoint source
     adj_l2 = wavefields['True'] - wavefields['Initial']
     clim = np.min(adj_l2),np.max(adj_l2)
     save_adjoint_source_plot(adj_l2, extent, clim, p_dir)
-
-
-    res_name_re = re.compile('^x_[0-9]+.mat')
-
-    # List of results files
-    res_file_list = [x for x in os.listdir(res_dir) if res_name_re.match(x)]
-
-    # Number of iterations
-    N = len(res_file_list)
-
-    # Iteration number list
-    it_nbrs = [x.split('.')[0][2:] for x in res_file_list]
