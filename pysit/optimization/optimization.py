@@ -380,7 +380,7 @@ class OptimizationBase(object):
                 else:
                     if i == 0:
                         tmp_data_write = {'data': self.base_model.without_padding().data}
-                        fname = 'x_' + str(i) + '.mat'
+                        fname = './x_iter/x_' + str(i) + '.mat'
                         sio.savemat(fname, tmp_data_write)
 
             # Apply new step
@@ -391,7 +391,7 @@ class OptimizationBase(object):
                     []
                 else:
                     tmp_data_write = {'data': self.base_model.without_padding().data}
-                    fname = 'x_' + str(i+1) + '.mat'
+                    fname = './x_iter/x_' + str(i+1) + '.mat'
                     sio.savemat(fname, tmp_data_write)
 
             ttt = time.time()-tt
