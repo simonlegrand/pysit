@@ -6,6 +6,7 @@ import time
 import copy
 
 import numpy as np
+import scipy.io as sio
 
 __all__=['OptimizationBase']
 
@@ -83,6 +84,7 @@ class OptimizationBase(object):
         self.max_linesearch_iterations = 10
 
         self.logfile = sys.stdout
+        self.write = False
 
 
     def reset(self,
@@ -247,6 +249,7 @@ class OptimizationBase(object):
                  verbose=False,
                  append=False,
                  status_configuration={},
+                 write=False,
                  **kwargs):
         """The main function for executing a number of steps of the descent
         algorith.
@@ -271,6 +274,8 @@ class OptimizationBase(object):
         self.reset(append, **status_configuration)
 
         self.verbose=verbose
+
+        self.write = write
 
         self.line_search = line_search
         if type(line_search) is str:
@@ -369,8 +374,25 @@ class OptimizationBase(object):
             self.store_history('step_length', i, step_len)
             self.store_history('step', i, step)
 
+            if self.write is True:
+                if self.use_parallel and (self.objective_function.parallel_wrap_shot.rank != 0):
+                    []
+                else:
+                    if i == 0:
+                        tmp_data_write = {'data': self.base_model.without_padding().data}
+                        fname = 'x_' + str(i) + '.mat'
+                        sio.savemat(fname, tmp_data_write)
+
             # Apply new step
             self.base_model += step
+
+            if self.write is True:
+                if self.use_parallel and (self.objective_function.parallel_wrap_shot.rank != 0):
+                    []
+                else:
+                    tmp_data_write = {'data': self.base_model.without_padding().data}
+                    fname = 'x_' + str(i+1) + '.mat'
+                    sio.savemat(fname, tmp_data_write)
 
             ttt = time.time()-tt
             self.store_history('run_time', i, ttt)

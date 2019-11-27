@@ -52,7 +52,9 @@ def save_model_plot(model, kind: str, mesh, clim: list, output_file: str):
     """
     fig, ax = plt.subplots(figsize=(32,12))
     aa=vis.plot(model.T, mesh, clim=clim)
-    ax.set(xlabel='Offset [km]', ylabel='Depth [km]', title=kind+' model', aspect='auto')
+    title = kind + ' model'
+    ax.set(xlabel='Offset [km]', ylabel='Depth [km]', title=title)
+    ax.set_aspect('auto')
     # Make a colorbar for the ContourSet returned by the contourf call.
     cbar = fig.colorbar(aa)
     cbar.ax.set_ylabel('Velocity [km/s]')
@@ -309,7 +311,6 @@ if __name__ == "__main__":
     for wf in wavefields:
         save_wavefield_plot(wavefields[wf], wf, extent, clim, p_dir)
 
-    clim2=[-4e-2, 4e-4]
     save_wavefield_plot(wavefields['True']-wavefields['Inverted'], 'diff', extent, clim2, p_dir)
 
     #### Gradient
