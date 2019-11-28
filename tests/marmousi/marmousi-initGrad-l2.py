@@ -1,23 +1,15 @@
 # Std import block
 import time
-import os
-from datetime import datetime
 import pickle
 import numpy as np
-import matplotlib.pyplot as plt
 import math
-from scipy import signal
 
 import copy
-from shutil import copy2
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-
 import sys
 import scipy.io as sio
 
 from pysit import *
 from pysit.gallery import marmousi
-from pysit.gallery import marmousi2
 from pysit.util.io import *
 from pysit.util.parallel import *
 
@@ -74,7 +66,7 @@ if __name__ == '__main__':
     shots_freq = copy.deepcopy(shots)
 
     # Define and configure the wave solver
-    trange = (0.0,3.0)
+    t_range = (0.0,3.0)
 
     solver = ConstantDensityAcousticWave(m,
                                          spatial_accuracy_order=6,
