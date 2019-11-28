@@ -45,11 +45,19 @@ class BPModel(PrecomputedGalleryModel):
     _parameter_scale_factor = { 'vp' : 1.0,
                                 'density' : 1.0}
 
-    _vp_file_sources = ['ftp://software.seg.org/pub/datasets/2D/2004_BP_Vel_Benchmark/vel_z6.25m_x12.5m_exact.segy.gz']
-    _density_file_sources = ['ftp://software.seg.org/pub/datasets/2D/2004_BP_Vel_Benchmark/density_z6.25m_x12.5m.segy.gz']
+#    _vp_file_sources = ['ftp://software.seg.org/pub/datasets/2D/2004_BP_Vel_Benchmark/vel_z6.25m_x12.5m_exact.segy.gz']
+#    _density_file_sources = ['ftp://software.seg.org/pub/datasets/2D/2004_BP_Vel_Benchmark/density_z6.25m_x12.5m.segy.gz']
 
-    _salt_file_sources = ['ftp://software.seg.org/pub/datasets/2D/2004_BP_Vel_Benchmark/vel_z6.25m_x12.5m_saltindex.segy.gz']
-    _water_file_sources = ['ftp://software.seg.org/pub/datasets/2D/2004_BP_Vel_Benchmark/vel_z6.25m_x12.5m_wbindex.segy.gz']
+#    _salt_file_sources = ['ftp://software.seg.org/pub/datasets/2D/2004_BP_Vel_Benchmark/vel_z6.25m_x12.5m_saltindex.segy.gz']
+#    _water_file_sources = ['ftp://software.seg.org/pub/datasets/2D/2004_BP_Vel_Benchmark/vel_z6.25m_x12.5m_wbindex.segy.gz']
+
+ 
+    _vp_file_sources = ['http://s3.amazonaws.com/open.source.geoscience/open_data/bpvelanal2004/vel_z6.25m_x12.5m_exact.segy.gz']
+    _density_file_sources = ['http://s3.amazonaws.com/open.source.geoscience/open_data/bpvelanal2004/density_z6.25m_x12.5m.segy.gz']
+
+    _salt_file_sources = ['http://s3.amazonaws.com/open.source.geoscience/open_data/bpvelanal2004/vel_z6.25m_x12.5m_saltindex.segy.gz']
+    _water_file_sources = ['http://s3.amazonaws.com/open.source.geoscience/open_data/bpvelanal2004/vel_z6.25m_x12.5m_wbindex.segy.gz']
+
 
     _remote_file_sources = {'vp' : _vp_file_sources,
                             'density' : _density_file_sources,
@@ -85,7 +93,10 @@ class BPModel(PrecomputedGalleryModel):
                   'mini':   np.array([25.0, 25.0]),}
 
     patches = { 'left' : {'origin': np.array([0.0, 0.0]),
-                          'size': np.array([21400.0, 11937.5])},
+                          #'size': np.array([21400.0, 11937.5])},
+                          'size': np.array([22000.0, 7200.0])},
+                'right' : {'origin': np.array([30000.0, 0.0]),
+                           'size': np.array([14000.0, 6000.0])},
               }
 
     license_string = "Use of the BP Velocity Benchmark requires you to read and \nagree with the license before continuing: \nhttp://software.seg.org/datasets/2D/2004_BP_Vel_Benchmark/2004_Benchmark_READMES.pdf"
