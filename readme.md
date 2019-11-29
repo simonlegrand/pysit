@@ -58,7 +58,7 @@ On all platforms (Linux, Windows 7 or greater, and MAC OS X), we recommend a pre
 
     If it has been installed, then you will see the following output on the screen:
 
-    ```
+    ```sh
     /YOURHOMEDIRECTORY/miniconda3/bin/conda
     ```
 
@@ -112,17 +112,17 @@ On all platforms (Linux, Windows 7 or greater, and MAC OS X), we recommend a pre
 
     Errors will occur while installing PETSC and petsc4py but have no impact on the final installation. See [here](https://bitbucket.org/petsc/petsc4py/issues/132/attributeerror-module-petsc-has-no) for more info.
     If you already have a working installation of PETSC, you can follow [these instructions](https://petsc4py.readthedocs.io/en/stable/install.html) to install manually petsc4py.
-    
+
 5. Check if PySIT has been successfully installed. Please open a python by
 
    ```sh
-   $ python
+   python
    ```
 
    Then try to import the PySIT toolbox by
 
    ```sh
-   $ import pysit
+   import pysit
    ```
 
    If there are no warnings or errors on the screen, then congratulations, you have successfully installed the PySIT toolbox. Please feel free to work with this powerful toolbox from the [examples].
