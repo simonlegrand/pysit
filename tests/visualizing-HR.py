@@ -113,25 +113,6 @@ def save_wavefields_receiver_plot(wfrs, tt, output_dir: str):
     fig.savefig(filepath)
 
 
-def save_wavefields_time_plot(wfrs, t_range, output_dir:str):
-    """
-    Save wavefields time into output_dir x, t
-    """
-    fig = plt.figure()
-    ntr = int(np.shape(wfrs['True'])[0]/t_range[1] + 1)
-    aaaa = np.round(ntr * dt, 1)
-    xx = np.arange(np.shape(wfrs['True'])[1]) * m.x.delta
-    plt.plot(xx, wfrs['True'][ntr, :], 'b', label='data-observed')
-    plt.plot(xx, wfrs['Initial'][ntr, :], 'g', label='data-initial')
-    plt.plot(xx, wfrs['Inverted'][ntr, :], 'r', label='data-inverted')
-    plt.xlabel('Receivers [km]')
-    plt.title('Wavefield-time-'+str(aaaa)+'s')
-    plt.grid(True)
-    plt.legend()
-    filepath = os.path.join(output_dir, 'wavefield_time_'+str(aaaa)+'s.png')
-    fig.savefig(filepath)
-
-
 def save_adjoint_source_plot(adj, ext: list, clim: list, output_dir: str):
     """
     Save adjoint source plot in output_dir
@@ -336,9 +317,6 @@ if __name__ == "__main__":
 
     #### Wavefields - receiver
     save_wavefields_receiver_plot(wavefields, T_coord, p_dir)
-
-    #### Wavefields -time
-    #save_wavefields_time_plot(wavefields, trange, p_dir)
 
     ### Adjoint source
     adj_l2 = wavefields['True'] - wavefields['Initial']
