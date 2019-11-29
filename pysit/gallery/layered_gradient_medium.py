@@ -19,9 +19,8 @@ from pysit.util.io import write_data
 from pysit.util.io import *
 
 
-__all__ = ['LayeredMediumModel', 'layered_medium',
-           'Layer', 'three_layered_medium','four_layered_medium',
-           'set_model_from_file',]
+__all__ = ['LayeredGradientMediumModel', 'layered_gradient_medium',
+           'Layer', 'set_model_from_file',]
 
 
 class Layer(object):
@@ -42,11 +41,11 @@ _rock_velocitys = [-288.0, -150.0, -36.0, -18.0, -90.0, 360.0, -60.0, -450.0, 0.
 water_layered_rock = [_water] + [Layer(s+3300, 180, 'rock {0}'.format(i)) for s,i in zip(_rock_velocitys, itertools.count())]
 
 
-class LayeredMediumModel(GeneratedGalleryModel):
+class LayeredGradientMediumModel(GeneratedGalleryModel):
 
     """ Gallery model for a generic, flat, layered medium. """
 
-    model_name =  "Layered"
+    model_name =  "LayeredGradient"
 
     valid_dimensions = (1,2,3)
 
@@ -65,8 +64,8 @@ class LayeredMediumModel(GeneratedGalleryModel):
                        min_ppw_at_freq=(6,10.0), # 6ppw at 10hz
                        x_length=None, x_delta=None,
                        y_length=None, y_delta=None,
-                       initial_model_style='smooth',
-                       initial_config={'sigma':100.0, 'filtersize':100},
+                       initial_model_style='constant',
+                       initial_config={'velocity':1700.0},
                        **kwargs):
         """ Constructor for a constant background model with horizontal reflectors.
 
@@ -208,6 +207,15 @@ class LayeredMediumModel(GeneratedGalleryModel):
 
             total_filled += L.thickness
 
+        layer_depth = 0
+        for L in self.layers[0:-1]:
+            layer_depth += L.thickness 
+        
+        loc = np.where(ZZ >layer_depth)
+        vp[loc] = np.linspace(self.layers[1].velocity, self.layers[2].velocity, loc[0].size)
+
+        #######################################################################
+
         # Construct initial velocity profile:
         if self.initial_model_style == 'constant': # initial_config = {'velocity': 3000.0}
             vp0 = np.ones(_shape_tuple)*self.initial_config['velocity']
@@ -244,6 +252,7 @@ class LayeredMediumModel(GeneratedGalleryModel):
         elif self.initial_model_style == 'layer':
             vels_init = self.initial_config['initial_velocity']
             thick_init = self.initial_config['initial_thickness']
+    
             layer_init = [Layer(s, t, 'Layer_init_ {0}'.format(i)) for s,t,i in zip(vels_init, thick_init, itertools.count())]
 
             vp0 = np.zeros(_shape_tuple)
@@ -287,82 +296,8 @@ def layered_medium(layers=water_layered_rock, **kwargs):
 
     return LayeredMediumModel(layers, **model_config).get_setup()
 
-def three_layered_medium(vels=(1.5, 2.5, 3.5), dx=0.02, dz=0.02, 
-                         nx=181, nz=61, nbx=10, nbz=10, pml_width=[0.5,0.5],
-                         water_layer_depth = 0.05,
-                        #  water_layer_depth = 0.0,
-                        #  initial_model_style = 'smooth',
-                        #  initial_config={'sigma': 1.0, 'filtersize': 8},
-                         initial_model_style = 'gradient',
-                         initial_config={'gradient_slope': 1.0},
-                         TrueModelFileName=None, InitialModelFileName=None, 
-                         **kwargs):
 
-    n_layer1 = nz // 3
-    n_layer2 = nz // 3
-    n_layer3 = nz - n_layer1 - n_layer2
-
-    n_layer1 = n_layer1 # + nbz
-    n_layer3 = n_layer3 # + nbz
-
-    nxt = nx # + 2*nbx
-    nzt = nz # + 2*nbz
-
-    Layer1   = Layer(vels[0], n_layer1*dz, 'Layer1', fixed=False)
-    Layer2   = Layer(vels[1], n_layer2*dz, 'Layer2', fixed=False)
-    Layer3   = Layer(vels[2], (n_layer3-1)*dz, 'Layer3', fixed=False)
-
-    Layerall = [Layer1] + [Layer2] + [Layer3]
-
-    x_lbc = kwargs['x_lbc'] if ('x_lbc' in kwargs) else PML(0.1, 100)
-    x_rbc = kwargs['x_rbc'] if ('x_rbc' in kwargs) else PML(0.1, 100)
-    z_lbc = kwargs['z_lbc'] if ('z_lbc' in kwargs) else PML(0.1, 100)
-    z_rbc = kwargs['z_rbc'] if ('z_rbc' in kwargs) else PML(0.1, 100)
-
-    kwargs['x_lbc'] = PML(pml_width[0], 100)
-    kwargs['x_rbc'] = PML(pml_width[0], 100)
-    kwargs['z_lbc'] = PML(pml_width[1], 100)
-    kwargs['z_rbc'] = PML(pml_width[1], 100)
-
-    model_config = dict(z_delta=dz,
-                        x_length=dx*(nxt-1), x_delta=dx,
-                        initial_model_style=initial_model_style,
-                        initial_config=initial_config, **kwargs)
-    
-
-    C, C0, m, d = LayeredMediumModel(Layerall, **model_config).get_setup()
-
-    if initial_model_style == 'gradient':
-        nz_water = int(water_layer_depth/dz) + 1
-        C1 = np.ones(m._shapes[(False,True)])*vels[0]
-        c_z = np.linspace(vels[0], vels[-1], nz-nz_water)
-        for i in range(nx):
-            C1[i, nz_water:nz] = c_z 
-
-        C0 = np.reshape(C1, C0.shape) 
-
-
-    if TrueModelFileName is not None:
-        ot = (0.0,0.0)
-        dt = (dz, dx)
-        nt = m._shapes[(False, True)]
-        B  = C.reshape(nt).transpose()
-        nt = (nt[1], nt[0])
-        write_data(TrueModelFileName, B, ot, dt, nt)
-
-    if InitialModelFileName is not None:
-        ot = (0.0,0.0)
-        dt = (dz, dx)
-        nt = m._shapes[(False, True)]
-        B  = C0.reshape(nt).transpose()
-        nt = (nt[1], nt[0])
-        write_data(InitialModelFileName, B, ot, dt, nt)
-
-
-    return C, C0, m, d
-
-
-def four_layered_medium(model_param=None, initial_model_style=None, initial_config=None, 
+def layered_gradient_medium(model_param=None, initial_model_style=None, initial_config=None, 
                         dx = 0.01, dz = 0.01, water_layer_depth = 0.05, TrueModelFileName=None, 
                         InitialModelFileName=None, **kwargs):
 
@@ -410,7 +345,7 @@ def four_layered_medium(model_param=None, initial_model_style=None, initial_conf
                         initial_model_style=initial_model_style,
                         initial_config=initial_config, **kwargs)
 
-    C, C0, m, d = LayeredMediumModel(Layerall, **model_config).get_setup()
+    C, C0, m, d = LayeredGradientMediumModel(Layerall, **model_config).get_setup()
 
     if TrueModelFileName is not None:
         ot = (0.0,0.0)
