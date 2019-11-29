@@ -53,7 +53,7 @@ if __name__ == '__main__':
     sys.stdout.write("{0}: {1}\n".format(rank, Nshots / size))
 
     shots = equispaced_acquisition(m,
-                                   RickerWavelet(10.0),
+                                   RickerWavelet(30.0),
                                    sources=Nshots,
                                    source_depth=zpos,
                                    source_kwargs={},

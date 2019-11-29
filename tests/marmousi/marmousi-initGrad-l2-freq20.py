@@ -53,7 +53,7 @@ if __name__ == '__main__':
     sys.stdout.write("{0}: {1}\n".format(rank, Nshots / size))
 
     shots = equispaced_acquisition(m,
-                                   RickerWavelet(10.0),
+                                   RickerWavelet(20.0),
                                    sources=Nshots,
                                    source_depth=zpos,
                                    source_kwargs={},
@@ -74,8 +74,7 @@ if __name__ == '__main__':
                                          kernel_implementation='cpp',
                                          ) 
     # Generate synthetic Seismic data
-    if rank == 0:    
-        sys.stdout.write('Generating data...')
+    sys.stdout.write('Generating data...')
 
     initial_model = solver.ModelParameters(m,{'C': C0})
     generate_seismic_data(shots, solver, initial_model)
@@ -97,9 +96,7 @@ if __name__ == '__main__':
         sys.stdout.write('Total wall time/shot: {0}\n'.format(tttt/Nshots))
 
     # Least-squares objective function
-    if rank == 0:
-        print('Least-squares...')
-
+    print('Least-squares...')
     objective = TemporalLeastSquares(solver, parallel_wrap_shot=pwrap)
    
     # Define the inversion algorithm
@@ -124,8 +121,7 @@ if __name__ == '__main__':
     # Proj_Op1 = BoxConstraintPrj(bound)
     # invalg_1 = PQN(objective, proj_op=Proj_Op1, memory_length=10)
 
-    if rank == 0:
-        print('Running LBFGS...')
+    print('Running LBFGS...')
     invalg = LBFGS(objective, memory_length=10)
     initial_value = solver.ModelParameters(m, {'C': C0})
     # Execute inversion algorithm
