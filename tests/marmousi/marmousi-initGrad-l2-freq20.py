@@ -9,7 +9,7 @@ import sys
 import scipy.io as sio
 
 from pysit import *
-from pysit.gallery.layered_medium import four_layered_medium
+from pysit.gallery import marmousi
 from pysit.util.io import *
 from pysit.util.parallel import *
 
@@ -28,42 +28,32 @@ if __name__ == '__main__':
         ttt = time.time()
 
     # Set up domain, mesh and velocity model
-    model_param = { 'x_length'          : 15.0,
-                    'z_depth'           : 6.0,
-                    'velocity'          : (1.7, 3.0, 3.5, 4.0),
-                    'layer_thickness'   : (1.0, 1.0, 1.5, 2.5),
-                  }
-
-    C, C0, m, d = four_layered_medium(model_param=model_param,
-                                      dx = 0.05, dz = 0.05,
-                                      # initial_model_style='gradient', 
-                                      # initial_config={'gradient_slope':0.85},
-                                      initial_model_style='layer',
-                                      initial_config={'initial_velocity' : (1.7, 3.0),
-                                                      'initial_thickness': (1.0, 5.0)},
-                                     )
+    C, C0, m, d = marmousi(patch='mini_square')
 
     m_shape = m._shapes[(False,True)]
-    pmlx = PML(0.5, 1.0)
-    pmlz = PML(0.5, 1.0)
+    pmlx = PML(0.5, 1000)
+    pmlz = PML(0.5, 1000)
 
-    x_config = (d.x.lbound, d.x.rbound, pmlx, pmlx)
-    z_config = (d.z.lbound, d.z.rbound, pmlz, pmlz)
+    x_config = (d.x.lbound/1000.0, d.x.rbound/1000.0, pmlx, pmlx)
+    z_config = (d.z.lbound/1000.0, d.z.rbound/1000.0, pmlz, pmlz)
 
     d = RectangularDomain(x_config, z_config)
     m = CartesianMesh(d, m_shape[0], m_shape[1])
+    
+    C = C/1000
+    C0 = C0/1000
 
     # Set up shots
     zmin = d.z.lbound
     zmax = d.z.rbound
-    zpos = 0.05 * 1.0
+    zpos = 0.02 * 1.0
 
     Nshots = size
-    Nreceivers = 301
+    Nreceivers = 'max'
     sys.stdout.write("{0}: {1}\n".format(rank, Nshots / size))
 
     shots = equispaced_acquisition(m,
-                                   RickerWavelet(15.0),
+                                   RickerWavelet(20.0),
                                    sources=Nshots,
                                    source_depth=zpos,
                                    source_kwargs={},
@@ -76,7 +66,7 @@ if __name__ == '__main__':
     shots_freq = copy.deepcopy(shots)
 
     # Define and configure the wave solver
-    trange = (0.0,4.0)
+    trange = (0.0,5.0)
 
     solver = ConstantDensityAcousticWave(m,
                                          spatial_accuracy_order=6,
@@ -84,8 +74,7 @@ if __name__ == '__main__':
                                          kernel_implementation='cpp',
                                          ) 
     # Generate synthetic Seismic data
-    if rank == 0:
-        sys.stdout.write('Generating data...')
+    sys.stdout.write('Generating data...')
 
     initial_model = solver.ModelParameters(m,{'C': C0})
     generate_seismic_data(shots, solver, initial_model)
@@ -107,8 +96,7 @@ if __name__ == '__main__':
         sys.stdout.write('Total wall time/shot: {0}\n'.format(tttt/Nshots))
 
     # Least-squares objective function
-    if rank == 0:
-        print('Least-squares...')
+    print('Least-squares...')
     objective = TemporalLeastSquares(solver, parallel_wrap_shot=pwrap)
    
     # Define the inversion algorithm
@@ -133,15 +121,13 @@ if __name__ == '__main__':
     # Proj_Op1 = BoxConstraintPrj(bound)
     # invalg_1 = PQN(objective, proj_op=Proj_Op1, memory_length=10)
 
-    if rank == 0:
-        print('Running LBFGS...')
-        
+    print('Running LBFGS...')
     invalg = LBFGS(objective, memory_length=10)
     initial_value = solver.ModelParameters(m, {'C': C0})
     # Execute inversion algorithm
     tt = time.time()
 
-    nsteps = 100
+    nsteps = 30
     result = invalg(shots, initial_value, nsteps,
                         line_search=line_search,
                         status_configuration=status_configuration, verbose=True, write=True)

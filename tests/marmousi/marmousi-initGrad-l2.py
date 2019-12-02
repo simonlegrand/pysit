@@ -66,7 +66,7 @@ if __name__ == '__main__':
     shots_freq = copy.deepcopy(shots)
 
     # Define and configure the wave solver
-    trange = (0.0,3.0)
+    trange = (0.0,5.0)
 
     solver = ConstantDensityAcousticWave(m,
                                          spatial_accuracy_order=6,
@@ -74,7 +74,8 @@ if __name__ == '__main__':
                                          kernel_implementation='cpp',
                                          ) 
     # Generate synthetic Seismic data
-    sys.stdout.write('Generating data...')
+    if rank == 0:    
+        sys.stdout.write('Generating data...')
 
     initial_model = solver.ModelParameters(m,{'C': C0})
     generate_seismic_data(shots, solver, initial_model)
@@ -96,7 +97,9 @@ if __name__ == '__main__':
         sys.stdout.write('Total wall time/shot: {0}\n'.format(tttt/Nshots))
 
     # Least-squares objective function
-    print('Least-squares...')
+    if rank == 0:
+        print('Least-squares...')
+
     objective = TemporalLeastSquares(solver, parallel_wrap_shot=pwrap)
    
     # Define the inversion algorithm
@@ -121,13 +124,14 @@ if __name__ == '__main__':
     # Proj_Op1 = BoxConstraintPrj(bound)
     # invalg_1 = PQN(objective, proj_op=Proj_Op1, memory_length=10)
 
-    print('Running LBFGS...')
+    if rank == 0:
+        print('Running LBFGS...')
     invalg = LBFGS(objective, memory_length=10)
     initial_value = solver.ModelParameters(m, {'C': C0})
     # Execute inversion algorithm
     tt = time.time()
 
-    nsteps = 2
+    nsteps = 30
     result = invalg(shots, initial_value, nsteps,
                         line_search=line_search,
                         status_configuration=status_configuration, verbose=True, write=True)

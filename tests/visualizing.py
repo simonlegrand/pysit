@@ -207,8 +207,8 @@ def save_velocity_traces(V: dict, X, Z, n_traces: int, file_base_name: str, outp
                 plt.plot(velocity_models['True'][:,idx],Z, label='V-trace-true')
                 for vm in V:
                     im = vm.split('/x_')[1]
-                    ni = int(len(V)/9)
-                    if int(im)%ni == 1:
+                    ni = int(len(V)/3)
+                    if int(im)%ni == 0:
                         plt.plot(V[vm][:,idx],Z, label='V-trace-iter#'+im)
             else:
                 for vm in V:
