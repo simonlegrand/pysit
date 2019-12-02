@@ -97,7 +97,7 @@ if __name__ == '__main__':
 
     initial_value.data = result.C
     C_cut = initial_value.without_padding().data
-    C_inverted = C_cut.reshape(m.shape(as_grid=True))
+    C_inverted = C_cut.reshape(m.shape(as_grid=True)).transpose()
 
     ####################################################################################################
     # Save wavefield
@@ -112,14 +112,14 @@ if __name__ == '__main__':
     conv_vals = np.array([v for k,v in list(invalg.objective_history.items())])
 
     initial_value.data = invalg.gradient_history[0].data
-    gradient = initial_value.without_padding().data.reshape(m.shape(as_grid=True))
+    gradient = initial_value.without_padding().data.reshape(m.shape(as_grid=True)).transpose()
 
     # ns = int(np.shape(wavefield_true)[0]/2)
 
     output = {'conv': conv_vals,
               'inverted': C_inverted,
-              'true': C.reshape(m.shape(as_grid=True)),
-              'initial': C0.reshape(m.shape(as_grid=True)),
+              'true': C.reshape(m.shape(as_grid=True)).transpose(),
+              'initial': C0.reshape(m.shape(as_grid=True)).transpose(),
               'wavefield_true': wavefield_true,
               'wavefield_initial': wavefield_initial,
               'wavefield_inverted': wavefield_inverted,
