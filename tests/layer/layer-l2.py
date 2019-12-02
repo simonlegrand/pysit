@@ -43,15 +43,15 @@ if __name__ == '__main__':
                                                       'initial_thickness': (1.0, 5.0)},
                                      )
 
-    m_shape = m._shapes[(False,True)]
-    pmlx = PML(0.5, 1.0)
-    pmlz = PML(0.5, 1.0)
+    # m_shape = m._shapes[(False,True)]
+    # pmlx = PML(0.5, 1.0)
+    # pmlz = PML(0.5, 1.0)
 
-    x_config = (d.x.lbound, d.x.rbound, pmlx, pmlx)
-    z_config = (d.z.lbound, d.z.rbound, pmlz, pmlz)
+    # x_config = (d.x.lbound, d.x.rbound, pmlx, pmlx)
+    # z_config = (d.z.lbound, d.z.rbound, pmlz, pmlz)
 
-    d = RectangularDomain(x_config, z_config)
-    m = CartesianMesh(d, m_shape[0], m_shape[1])
+    # d = RectangularDomain(x_config, z_config)
+    # m = CartesianMesh(d, m_shape[0], m_shape[1])
 
     # Set up shots
     zmin = d.z.lbound

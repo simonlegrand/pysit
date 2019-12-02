@@ -30,18 +30,18 @@ if __name__ == '__main__':
     # Set up domain, mesh and velocity model
     C, C0, m, d = marmousi(patch='mini_square')
 
-    m_shape = m._shapes[(False,True)]
-    pmlx = PML(0.5, 1000)
-    pmlz = PML(0.5, 1000)
+    # m_shape = m._shapes[(False,True)]
+    # pmlx = PML(0.5, 1000)
+    # pmlz = PML(0.5, 1000)
 
-    x_config = (d.x.lbound/1000.0, d.x.rbound/1000.0, pmlx, pmlx)
-    z_config = (d.z.lbound/1000.0, d.z.rbound/1000.0, pmlz, pmlz)
+    # x_config = (d.x.lbound/1000.0, d.x.rbound/1000.0, pmlx, pmlx)
+    # z_config = (d.z.lbound/1000.0, d.z.rbound/1000.0, pmlz, pmlz)
 
-    d = RectangularDomain(x_config, z_config)
-    m = CartesianMesh(d, m_shape[0], m_shape[1])
+    # d = RectangularDomain(x_config, z_config)
+    # m = CartesianMesh(d, m_shape[0], m_shape[1])
     
-    C = C/1000
-    C0 = C0/1000
+    # C = C/1000
+    # C0 = C0/1000
 
     # Set up shots
     zmin = d.z.lbound

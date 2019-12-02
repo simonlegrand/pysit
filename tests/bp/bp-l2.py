@@ -30,18 +30,18 @@ if __name__ == '__main__':
     # Set up domain, mesh and velocity model
     C, C0, m, d = bp(patch='right', pixel_scale='mini', initial_model_style='smooth_low_pass', initial_config={'freq':1/3000.})
 
-    m_shape = m._shapes[(False,True)]
-    pmlx = PML(0.5, 1000)
-    pmlz = PML(0.5, 1000)
+    # m_shape = m._shapes[(False,True)]
+    # pmlx = PML(0.5, 1000)
+    # pmlz = PML(0.5, 1000)
 
-    x_config = (d.x.lbound/1000.0, d.x.rbound/1000.0, pmlx, pmlx)
-    z_config = (d.z.lbound/1000.0, d.z.rbound/1000.0, pmlz, pmlz)
+    # x_config = (d.x.lbound/1000.0, d.x.rbound/1000.0, pmlx, pmlx)
+    # z_config = (d.z.lbound/1000.0, d.z.rbound/1000.0, pmlz, pmlz)
 
-    d = RectangularDomain(x_config, z_config)
-    m = CartesianMesh(d, m_shape[0], m_shape[1])
+    # d = RectangularDomain(x_config, z_config)
+    # m = CartesianMesh(d, m_shape[0], m_shape[1])
     
-    C = C/1000
-    C0 = C0/1000
+    # C = C/1000
+    # C0 = C0/1000
 
     # Set up shots
     zmin = d.z.lbound
@@ -74,7 +74,8 @@ if __name__ == '__main__':
                                          kernel_implementation='cpp',
                                          ) 
     # Generate synthetic Seismic data
-    sys.stdout.write('Generating data...')
+    if rank == 0:
+        sys.stdout.write('Generating data...')
 
     initial_model = solver.ModelParameters(m,{'C': C0})
     generate_seismic_data(shots, solver, initial_model)
@@ -96,7 +97,8 @@ if __name__ == '__main__':
         sys.stdout.write('Total wall time/shot: {0}\n'.format(tttt/Nshots))
 
     # Least-squares objective function
-    print('Least-squares...')
+    if rank == 0:
+        print('Least-squares...')
     objective = TemporalLeastSquares(solver, parallel_wrap_shot=pwrap)
    
     # Define the inversion algorithm
@@ -121,7 +123,8 @@ if __name__ == '__main__':
     # Proj_Op1 = BoxConstraintPrj(bound)
     # invalg_1 = PQN(objective, proj_op=Proj_Op1, memory_length=10)
 
-    print('Running LBFGS...')
+    if rank == 0:
+        print('Running LBFGS...')
     invalg = LBFGS(objective, memory_length=10)
     initial_value = solver.ModelParameters(m, {'C': C0})
     # Execute inversion algorithm
