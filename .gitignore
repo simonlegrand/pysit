@@ -25,6 +25,7 @@ __pycache__
 _build
 _generated
 docs/api
+docs/pysit.*
 
 
 # Packages/installer info
