@@ -337,11 +337,12 @@ if __name__ == "__main__":
     t_range = output['t_range'][0]
     T_coord = np.linspace(t_range[0], t_range[1], nt)
     extent = [min(X_coord), max(X_coord), max(T_coord), min(T_coord)]
-    clim=[-.05, .05]
+    clim=[-wavefields['True'].max(),wavefields['True'].max()]
+    clim_diff=[-0.5*wavefields['True'].max(), 0.5*wavefields['True'].max()]
     for wf in wavefields:
         save_wavefield_plot(wavefields[wf], wf, extent, clim, p_dir)
 
-    save_wavefield_plot(wavefields['True']-wavefields['Inverted'], 'diff', extent, clim, p_dir)
+    save_wavefield_plot(wavefields['True']-wavefields['Inverted'], 'diff', extent, clim_diff, p_dir)
 
     #### Gradient
     save_gradient_plot(output['gradient'].T, m, p_dir)
