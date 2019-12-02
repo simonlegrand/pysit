@@ -66,7 +66,7 @@ if __name__ == '__main__':
     shots_freq = copy.deepcopy(shots)
 
     # Define and configure the wave solver
-    t_range = (0.0,3.0)
+    trange = (0.0,3.0)
 
     solver = ConstantDensityAcousticWave(m,
                                          spatial_accuracy_order=6,
@@ -127,7 +127,7 @@ if __name__ == '__main__':
     # Execute inversion algorithm
     tt = time.time()
 
-    nsteps = 10
+    nsteps = 2
     result = invalg(shots, initial_value, nsteps,
                         line_search=line_search,
                         status_configuration=status_configuration, verbose=True, write=True)
@@ -165,7 +165,7 @@ if __name__ == '__main__':
                   'gradient': gradient,
                   'x_range': [d.x.lbound, d.x.rbound],
                   'z_range': [d.z.lbound, d.z.rbound],
-                  't_range': t_range
+                  't_range': trange
                   }
 
         sio.savemat('./output.mat', output)
