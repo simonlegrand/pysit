@@ -10,7 +10,10 @@ __docformat__ = "restructuredtext en"
 
 
 def identity(x):
-    return x
+    return np.asarray(x, dtype=float)
+
+def identity_gradient(x):
+    return np.ones_like(np.copy(x), dtype=float)
 
 def get_function(func_id):
     """
@@ -29,7 +32,11 @@ def get_function(func_id):
         'id': identity
     }
 
-    return switcher.get(func_id, None)
+    switcher_gradient = {
+        'id': identity_gradient
+    }
+
+    return switcher.get(func_id, None), switcher_gradient(func_id, None)
 
 
 class PositivVectorizedSignal(ObjectiveFunctionBase):
