@@ -1,10 +1,11 @@
-#### Orig ######## optimization.py ##########
+#### Miao ######## optimization.py ##########
 
 
 import sys
 import time
 import copy
 
+import math
 import numpy as np
 import scipy.io as sio
 
@@ -80,11 +81,12 @@ class OptimizationBase(object):
         self.verbose = False
 
         self.use_parallel = objective.use_parallel()
-
         self.max_linesearch_iterations = 10
-
         self.logfile = sys.stdout
         self.write = False
+
+        self.spos = None
+        self.sneg = None
 
 
     def reset(self,
@@ -224,7 +226,7 @@ class OptimizationBase(object):
             return
 
         if self.verbose:
-            print(*args, file=self.logfile)
+            print(*args, file=self.logfile, flush=True)
 
 #   #### Actual optimization stuff below...
 
@@ -241,14 +243,43 @@ class OptimizationBase(object):
 
         self.solver.model_parameters = self.base_model
 
+    def set_linesearch_configuration(self, 
+                                     geom_fac=0.5,
+                                     geom_fac_up=0.7,
+                                     Wolfe_c1=0.1,  # 1e-4
+                                     Wolfe_c2=0.9,
+                                     Wolfe_fac_up=1.5,
+                                     goldstein_c=1e-4,
+                                     fp_comp=1e-6):
+        """Set up configurations for linesearch 
+            Parameters:
+            geom_fac: factor to reduce the search step size
+            geom_fac_up: factor to increase the search step size
+            goldstein_c: the c parameter for the goldstein condition
+            Wolfe_c1: the c1 parameter for the Wolfe condition
+            Wolfe_c2: the c2 parameter for the Wolfe condition
+            Wolfe_fac_up: the factor to increase the search step size for the Wolfe condition
+            fp_comp: reasonable floating point cutoff 
+        """
+
+        setattr(self, "geom_fac", geom_fac)
+        setattr(self, "geom_fac_up", geom_fac_up)
+        setattr(self, "goldstein_c", goldstein_c)
+        setattr(self, "Wolfe_c1", Wolfe_c1)
+        setattr(self, "Wolfe_c2", Wolfe_c2)
+        setattr(self, "Wolfe_fac_up", Wolfe_fac_up)
+        setattr(self, "fp_comp", fp_comp)
+
     def __call__(self,
                  shots,
                  initial_value,
                  iteration_parameters,
                  line_search='backtrack',
+                 tolerance=1e-9,
                  verbose=False,
                  append=False,
                  status_configuration={},
+                 linesearch_configuration={},
                  write=False,
                  **kwargs):
         """The main function for executing a number of steps of the descent
@@ -268,16 +299,18 @@ class OptimizationBase(object):
             Frequency with which to store histories.  Detailed in reset method.
         verbose : bool
             Verbosity flag.
+        linesearch_configuration : dictionary
+            Possible parameters for linesearch, for more details, please check the introduction of the function set_linesearch_configuration
 
         """
 
         self.reset(append, **status_configuration)
-
+        self.set_linesearch_configuration(**linesearch_configuration)
+        self.tolerance = tolerance
         self.verbose=verbose
-
         self.write = write
-
         self.line_search = line_search
+
         if type(line_search) is str:
             self.ls_method = line_search
             self.ls_config = None
@@ -328,28 +361,54 @@ class OptimizationBase(object):
             Number of iterations to run.
 
         """
+        stop = False
+        iteration = 0
 
-        for step in range(steps):
+        while not stop:
+        # for step in range(steps):
             # Zeroth step is always the initial condition.
             tt = time.time()
             i = self.iteration
 
             self.store_history('value', i, self.base_model)
-
             self._print('Iteration {0}'.format(i))
-
             self.solver.model_parameters = self.base_model
 
             # extra data to try to extract from gradient call
             aux_info = {'objective_value': (True, None),
                         'residual_norm': (True, None)}
 
-
             # pass information for the solver type
             objective_arguments.update(kwargs)
 
-            # Compute the gradient    
-            gradient = self.objective_function.compute_gradient(shots, self.base_model, aux_info=aux_info, **objective_arguments)
+            # Compute the gradient
+            if self.objective_function.name() == 'SinkhornDivergence':
+                if i == 0:
+                    sp = np.ones([4,self.objective_function.Nt(),self.objective_function.Nr()])
+                    sn = np.ones([4,self.objective_function.Nt(),self.objective_function.Nr()])
+                    gradient, s_p, s_n, adjoint_src, adj_l2 = self.objective_function.compute_gradient(shots, self.base_model, sp, sn, aux_info=aux_info, **objective_arguments)
+
+                    ns = int(self.objective_function.parallel_wrap_shot.size/2)
+                    if self.use_parallel and (self.objective_function.parallel_wrap_shot.rank != ns):
+                        []
+                    else:
+                        tmp_data_write = {'adjoint-source': adjoint_src,
+                                          'adjoint-source-l2': adj_l2,  
+                                         }
+                        fname = 'adjsrc.mat'
+                        sio.savemat(fname, tmp_data_write)
+
+                    self.spos = s_p
+                    self.sneg = s_n
+
+                else:
+                    gradient, sinkhorn_p, sinkhorn_n, adjoint_src, adj_l2 = self.objective_function.compute_gradient(shots, self.base_model, self.spos, self.sneg, aux_info=aux_info, **objective_arguments)
+
+                    self.spos = sinkhorn_p
+                    self.sneg = sinkhorn_n
+            else:
+                gradient = self.objective_function.compute_gradient(shots, self.base_model, aux_info=aux_info, **objective_arguments)
+
             objective_value = aux_info['objective_value'][1]
             
             # Process and store meta data about the gradient
@@ -366,40 +425,50 @@ class OptimizationBase(object):
                 self.store_history('residual_length', i, aux_info['residual_norm'][1])
                 self._print('  residual {0}'.format(aux_info['residual_norm'][1]))
 
-            # Compute step modifier
-            step = self._select_step(shots, objective_value, gradient, i, objective_arguments, **kwargs)
+            if math.isnan(gradient_norm) is True:
+                print('Nan Values encountered, stopping inner_loop()......')
+                self.base_model = self.base_model  
+                stop = True
+            else:          
+                # Compute step modifier
+                step = self._select_step(shots, objective_value, gradient, i, objective_arguments, **kwargs)
 
-            # Process and store meta data about the step
-            step_len = step.norm()
-            self.store_history('step_length', i, step_len)
-            self.store_history('step', i, step)
+                # Process and store meta data about the step
+                step_len = step.norm()
+                self.store_history('step_length', i, step_len)
+                self.store_history('step', i, step)
+                    
+                if self.write is True:
+                    if self.use_parallel and (self.objective_function.parallel_wrap_shot.rank != 0):
+                        []
+                    else:
+                        if i == 0:
+                            tmp_data_write = {'data': self.base_model.without_padding().data}
+                            fname = 'x_' + str(i) + '.mat'
+                            sio.savemat(fname, tmp_data_write)
 
-            if self.write is True:
-                if self.use_parallel and (self.objective_function.parallel_wrap_shot.rank != 0):
-                    []
-                else:
-                    if i == 0:
+                # Apply new step
+                self.base_model += step
+
+                if self.write is True:
+                    if self.use_parallel and (self.objective_function.parallel_wrap_shot.rank != 0):
+                        []
+                    else:
                         tmp_data_write = {'data': self.base_model.without_padding().data}
-                        fname = 'x_' + str(i) + '.mat'
+                        fname = 'x_' + str(i+1) + '.mat'
                         sio.savemat(fname, tmp_data_write)
 
-            # Apply new step
-            self.base_model += step
+                ttt = time.time()-tt
+                self.store_history('run_time', i, ttt)
 
-            if self.write is True:
-                if self.use_parallel and (self.objective_function.parallel_wrap_shot.rank != 0):
-                    []
+                self.iteration += 1
+
+                self._print('  run time {0}s'.format(ttt))
+
+                if (iteration >= int(steps-1)) or (objective_value < self.tolerance):
+                    stop = True
                 else:
-                    tmp_data_write = {'data': self.base_model.without_padding().data}
-                    fname = 'x_' + str(i+1) + '.mat'
-                    sio.savemat(fname, tmp_data_write)
-
-            ttt = time.time()-tt
-            self.store_history('run_time', i, ttt)
-
-            self.iteration += 1
-
-            self._print('  run time {0}s'.format(ttt))
+                    iteration += 1
 
     def _select_step(self, shots, current_objective_value, gradient, iteration, objective_arguments, **kwargs):
         raise NotImplementedError("_select_step must be implemented by a subclass.")
@@ -436,6 +505,9 @@ class OptimizationBase(object):
         elif self.ls_method == 'backtrack':
             return self._backtrack_line_search(shots, gradient, direction, objective_arguments, **kwargs)
 
+        elif self.ls_method == 'Wolfe':
+            return self._Wolfe_line_search(shots, gradient, direction, objective_arguments, **kwargs)
+
         else:
             raise ValueError('Alpha selection method {0} invalid'.format(self.ls_method))
 
@@ -470,13 +542,16 @@ class OptimizationBase(object):
                                         current_objective_value=None,
                                         alpha0_kwargs={}, **kwargs):
 
-        geom_fac = 0.8
-        geom_fac_up = 0.7
-        goldstein_c = 1e-3 #1e-4
+        geom_fac = self.geom_fac
+        geom_fac_up = self.geom_fac_up
+        goldstein_c = self.goldstein_c #1e-4
 
         fp_comp = 1e-6
         if current_objective_value is None:
-            fk = self.objective_function.evaluate(shots, self.base_model, **objective_arguments)
+            if self.objective_function.name() == 'SinkhornDivergence':
+                fk = self.objective_function.evaluate(shots, self.base_model, self.spos, self.sneg, **objective_arguments)
+            else:
+                fk = self.objective_function.evaluate(shots, self.base_model, **objective_arguments)
         else:
             fk = current_objective_value
 
@@ -489,6 +564,8 @@ class OptimizationBase(object):
         stop = False
         itercnt = 1
         self._print("  Starting: ".format(itercnt), alpha, fk)
+        Alphas = []
+        Objs = []
         while not stop:
             # Cut the initial alpha until it is as large as can be and still satisfy the valid conditions for an updated model.
             valid=False
@@ -498,12 +575,19 @@ class OptimizationBase(object):
                 alpha/=2
                 tdir = alpha*direction
                 model = self.base_model + tdir
+                
                 cnt +=1
                 valid = model.validate()
 
             self.solver.model_parameters = model
 
-            fkp1 = self.objective_function.evaluate(shots, model, **objective_arguments)
+            if self.objective_function.name() == 'SinkhornDivergence':
+                fkp1 = self.objective_function.evaluate(shots, model, self.spos, self.sneg, **objective_arguments)
+            else:
+                fkp1 = self.objective_function.evaluate(shots, model, **objective_arguments)
+
+            Alphas.append(alpha)
+            Objs.append(fkp1)
 
             cmpval = fk + alpha * goldstein_c * gradient.inner_product(tdir)
 
@@ -513,10 +597,99 @@ class OptimizationBase(object):
                 stop = True
             elif itercnt > self.max_linesearch_iterations:
                 stop = True
-                self._print('Too many passes ({0}), attempting to use current alpha ({1}).'.format(itercnt, alpha))
+                alpha_idx = np.argmin(Objs)
+                alpha = Alphas[alpha_idx]
+                self._print('Too many passes ({0}), attempting to use current alpha ({1}).'.format(alpha_idx, alpha))
             else:
                 itercnt += 1
                 alpha = alpha * geom_fac
+
+        self.prev_alpha = alpha
+
+        return alpha
+
+    def _Wolfe_line_search(self, shots, gradient, direction, objective_arguments,
+                                        current_objective_value=None,
+                                        alpha0_kwargs={}, **kwargs):
+
+        geom_fac = self.geom_fac
+        geom_fac_up = self.geom_fac_up
+        c1 = self.Wolfe_c1 #1e-4
+        c2 = self.Wolfe_c2
+        Wolfe_fac_up = self.Wolfe_fac_up
+
+        fp_comp = self.fp_comp
+        if current_objective_value is None:
+            if self.objective_function.name() == 'SinkhornDivergence':
+                fk = self.objective_function.evaluate(shots, self.base_model, self.spos, self.sneg, **objective_arguments)
+            else:
+                fk = self.objective_function.evaluate(shots, self.base_model, **objective_arguments)
+
+            # fk = self.objective_function.evaluate(shots, self.base_model, **objective_arguments)
+        else:
+            fk = current_objective_value
+
+        myalpha0_kwargs = dict()
+        myalpha0_kwargs.update(alpha0_kwargs)
+        myalpha0_kwargs.update({'upscale_factor' : geom_fac_up})
+
+        alpha = self._compute_alpha0(current_objective_value, gradient, **myalpha0_kwargs)
+
+        stop = False
+        itercnt = 1
+        self._print("  Starting: ".format(itercnt), alpha, fk)
+        aux_info = {'objective_value': (True, None),
+                    'residual_norm': (True, None)}
+        Alphas = []
+        Objs = []
+        while not stop:
+            # Cut the initial alpha until it is as large as can be and still satisfy the valid conditions for an updated model.
+            valid=False
+            alpha *= 2
+            cnt = 0
+            while not valid:
+                alpha/=2
+                tdir = alpha*direction
+                model = self.base_model + tdir
+                    
+                cnt +=1
+                valid = model.validate()
+
+            self.solver.model_parameters = model
+
+            if self.objective_function.name() == 'SinkhornDivergence':
+                gradient_kp1 = self.objective_function.compute_gradient(shots, model, aux_info=aux_info, **objective_arguments)
+            else:
+                gradient_kp1 = self.objective_function.compute_gradient(shots, model, aux_info=aux_info, **objective_arguments)
+
+            # gradient_kp1 = self.objective_function.compute_gradient(shots, model, aux_info=aux_info, **objective_arguments)
+            fkp1 = aux_info['objective_value'][1]
+            
+            Alphas.append(alpha)
+            Objs.append(fkp1)
+
+            cmpval = fk + alpha * c1 * gradient.inner_product(tdir)
+            cmpval2 = c2 * gradient.inner_product(tdir)
+            f2kp1 = gradient_kp1.inner_product(tdir)
+            self._print("  Pass {0}: a:{1}; {2} ?<= {3}; |{4}| ?<= |{5}|".format(itercnt, alpha, fkp1, cmpval, f2kp1, cmpval2))
+
+            if (fkp1 <= cmpval) or ((abs(fkp1-cmpval)/abs(fkp1)) <= fp_comp): # reasonable floating point cutoff               
+                if (abs(f2kp1) <= abs(cmpval2)) or ((abs(f2kp1-cmpval2)/abs(cmpval2)) <= fp_comp):
+                    stop = True
+                else:
+                    alpha_org = alpha
+                    alpha *= Wolfe_fac_up
+                    itercnt += 1
+            else:
+                itercnt += 1
+                alpha_org = alpha
+                alpha = alpha * geom_fac
+                
+            if itercnt > self.max_linesearch_iterations:
+                stop = True
+                alpha_idx = np.argmin(Objs)
+                alpha = Alphas[alpha_idx]
+                self._print('Too many passes ({0}), attempting to use current alpha ({1}).'.format(alpha_idx, alpha))
 
         self.prev_alpha = alpha
 
