@@ -54,8 +54,8 @@ class SinkhornDivergence(ObjectiveFunctionBase):
 
         self.epsilon_kl = ot_param['epsilon_kl']
         self.lamb_kl = ot_param['lamb_kl']
-        self.x_range = ot_param['x_range']
-        self.t_range = ot_param['t_range']
+        self.x_scale = ot_param['x_scale']
+        self.t_scale = ot_param['t_scale']
         self.nt_resampling = ot_param['nt_resampling']
         #self.resample_window = ot_param['resample_window']
         self.nr = ot_param['N_receivers']
@@ -206,7 +206,7 @@ class SinkhornDivergence(ObjectiveFunctionBase):
         return dis, grad, cvrgce[0:icv], ar
 
 
-    def _otmmd(self, data_obs, data_cal, t_range, x_range, sinkhorn):
+    def _otmmd(self, data_obs, data_cal, t_scale, x_scale, sinkhorn):
         ghk_epsilon = self.epsilon_kl
         ghk_lamb2 = self.lamb_kl
         ghk_niter = self.sinkhorn_iterations
@@ -216,11 +216,11 @@ class SinkhornDivergence(ObjectiveFunctionBase):
         ghk_nt = int(np.shape(data_obs)[0])
         ghk_nx = int(np.shape(data_obs)[1])
 
-        linspt1 = np.linspace(0.0, t_range, ghk_nt)
-        linspt2 = np.linspace(0.0, t_range, ghk_nt)  # Here we define two linspt for obs and simul separately
+        linspt1 = np.linspace(0.0, t_scale, ghk_nt)
+        linspt2 = np.linspace(0.0, t_scale, ghk_nt)  # Here we define two linspt for obs and simul separately
         
-        linspx1 = np.linspace(0.0, x_range, ghk_nx)
-        linspx2 = np.linspace(0.0, x_range, ghk_nx)  # Here we define two linspx for obs and simul separately
+        linspx1 = np.linspace(0.0, x_scale, ghk_nx)
+        linspx2 = np.linspace(0.0, x_scale, ghk_nx)  # Here we define two linspx for obs and simul separately
 
         t1, t2 = np.meshgrid(linspt1, linspt2)  # T1[Nt,Nt], T2[Nt,Nt] is the meshgrid for loss matrix Ct[Nt, Nt]
         x1, x2 = np.meshgrid(linspx1, linspx2)  # X1[Nx,Nx], X2[Nt,Nx] is the meshgrid for loss matrix Cx[Nx, Nx]
@@ -322,10 +322,10 @@ class SinkhornDivergence(ObjectiveFunctionBase):
        
         ##############################################################################
         if self.sign_option == 'positive':
-            dis, adjsrc_resampled, sinkhorn_pos = self._otmmd(dobs_resampled, dpred_resampled, self.t_range, self.x_range, sinkhorn_p)
+            dis, adjsrc_resampled, sinkhorn_pos = self._otmmd(dobs_resampled, dpred_resampled, self.t_scale, self.x_scale, sinkhorn_p)
         elif self.sign_option == 'pos+neg':            
-            dis_pos, adjsrc_resampled_pos, sinkhorn_pos = self._otmmd(dobs_resampled, dpred_resampled, self.t_range, self.x_range, sinkhorn_p)
-            dis_neg, adjsrc_resampled_neg, sinkhorn_neg = self._otmmd(-1.0*dobs_resampled, -1.0*dpred_resampled, self.t_range, self.x_range, sinkhorn_n)
+            dis_pos, adjsrc_resampled_pos, sinkhorn_pos = self._otmmd(dobs_resampled, dpred_resampled, self.t_scale, self.x_scale, sinkhorn_p)
+            dis_neg, adjsrc_resampled_neg, sinkhorn_neg = self._otmmd(-1.0*dobs_resampled, -1.0*dpred_resampled, self.t_scale, self.x_scale, sinkhorn_n)
             
             adjsrc_resampled = adjsrc_resampled_neg - adjsrc_resampled_pos
             dis = dis_pos + dis_neg

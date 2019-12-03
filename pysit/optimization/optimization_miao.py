@@ -454,6 +454,7 @@ class OptimizationBase(object):
                     if self.use_parallel and (self.objective_function.parallel_wrap_shot.rank != 0):
                         []
                     else:
+                        # if i%10 == 0:
                         tmp_data_write = {'data': self.base_model.without_padding().data}
                         fname = 'x_' + str(i+1) + '.mat'
                         sio.savemat(fname, tmp_data_write)
