@@ -65,26 +65,26 @@ if __name__ == '__main__':
     ############# Set up objective function ##############
 
     #### Least-squares objective function
-    print('Least-squares...')
-    objective = TemporalLeastSquares(solver)
+    # print('Least-squares...')
+    # objective = TemporalLeastSquares(solver)
 
     #### Sinkhorn-Divergence objective function
-    # print('Sinkhorn Divergence...')
-    # ot_param = { 'sinkhorn_iterations'          : 10000,
-    #              'sinkhorn_tolerance'           : 1.0e-9,
-    #              'epsilon_maxsmooth'            : 1.0e-5,   # for the smoothing of the max(., 0)
-    #              'successive_over_relaxation'   : 1.4,
-    #              'sign_option'                  : "pos+neg",
-    #              'epsilon_kl'                   : 1e-2,
-    #              'lamb_kl'                      : 1.0,
-    #              't_scale'                      : 10.0,
-    #              'x_scale'                      : 10.0,
-    #              'nt_resampling'                : 128,
-    #              'N_receivers'                  : Nreceivers,
-    #              'filter_op'                    : False,
-    #              'freq_band'                    : [1, 30.0],
-    #            }
-    # objective = SinkhornDivergence(solver, ot_param=ot_param)
+    print('Sinkhorn Divergence...')
+    ot_param = { 'sinkhorn_iterations'          : 10000,
+                 'sinkhorn_tolerance'           : 1.0e-9,
+                 'epsilon_maxsmooth'            : 1.0e-5,   # for the smoothing of the max(., 0)
+                 'successive_over_relaxation'   : 1.4,
+                 'sign_option'                  : "pos+neg",
+                 'epsilon_kl'                   : 1e-2,
+                 'lamb_kl'                      : 1.0,
+                 't_scale'                      : 10.0,
+                 'x_scale'                      : 10.0,
+                 'nt_resampling'                : 128,
+                 'N_receivers'                  : Nreceivers,
+                 'filter_op'                    : False,
+                 'freq_band'                    : [1, 30.0],
+               }
+    objective = SinkhornDivergence(solver, ot_param=ot_param)
 
     # Define the inversion algorithm
     invalg = LBFGS(objective)
