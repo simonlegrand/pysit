@@ -74,7 +74,7 @@ if __name__ == '__main__':
                  'sinkhorn_tolerance'           : 1.0e-9,
                  'epsilon_maxsmooth'            : 1.0e-5,   # for the smoothing of the max(., 0)
                  'successive_over_relaxation'   : 1.4,
-                 'sign_option'                  : "pos+neg",
+                 'trans_func_type'              : 'smooth_max',  ## smooth_max ## exp ##
                  'epsilon_kl'                   : 1e-2,
                  'lamb_kl'                      : 1.0,
                  't_scale'                      : 10.0,

@@ -9,7 +9,7 @@ from scipy import signal
 from pysit.objective_functions.objective_function import ObjectiveFunctionBase
 from pysit.util.parallel import ParallelWrapShotNull
 from pysit.modeling.temporal_modeling import TemporalModeling
-from pysit.objective_functions.positiv_vectorized_signal import get_function
+from pysit.util.compute_tools import get_function
 
 try:
     from scipy.signal import sosfilt
@@ -22,8 +22,6 @@ except ImportError:
 __all__ = ['SinkhornDivergence']  # Sinkhorn Divergence
 
 __docformat__ = "restructuredtext en"
-
-ep = 2.2204e-16
 
 class SinkhornDivergence(ObjectiveFunctionBase):
     """ How to compute the parts of the objective you need to do optimization """
@@ -51,7 +49,7 @@ class SinkhornDivergence(ObjectiveFunctionBase):
         self.sinkhorn_tolerance = ot_param['sinkhorn_tolerance']
         self.epsilon_maxsmooth = ot_param['epsilon_maxsmooth']
         self.sor = ot_param['successive_over_relaxation']
-        self.sign_option = ot_param['sign_option']
+        self.trans_func = ot_param['trans_func_type']
 
         self.epsilon_kl = ot_param['epsilon_kl']
         self.lamb_kl = ot_param['lamb_kl']
@@ -62,19 +60,6 @@ class SinkhornDivergence(ObjectiveFunctionBase):
         self.nr = ot_param['N_receivers']
         self.filter_op = ot_param['filter_op']
         self.freq_band = ot_param['freq_band']
-
-
-    # Defintion of functions
-
-    # def _maxp(self, d, eps):
-    #     """
-    #     Smooth the max(0, .)
-    #     """
-    #     eps = eps * np.max(d)
-    #     s = 0.5 * (d + np.sqrt(d**2 + eps**2))
-    #     ds = 0.5 * (1 + d/(np.sqrt(d**2 + eps**2))) #* (np.exp(d/np.max(d))-0.8) #(d**2)
-    #     #ds = ds/np.max(ds)
-    #     return s, ds
 
     def _ot(self, ct, cx, p, q, niter, lamb, epsilon, toler, a=None, b=None):
 
@@ -305,20 +290,9 @@ class SinkhornDivergence(ObjectiveFunctionBase):
         # Down-sampling data on time
         dpred_resampled = signal.resample(dpred, self.nt_resampling)
         dobs_resampled = signal.resample(dobs, self.nt_resampling)
-       
-        # ##############################################################################
-        # if self.sign_option == 'positive':
-        #     dis, adjsrc_resampled, sinkhorn_pos = self._otmmd(dobs_resampled, dpred_resampled, self.t_scale, self.x_scale, sinkhorn_p)
-        # elif self.sign_option == 'pos+neg':            
-        #     dis_pos, adjsrc_resampled_pos, sinkhorn_pos = self._otmmd(dobs_resampled, dpred_resampled, self.t_scale, self.x_scale, sinkhorn_p)
-        #     dis_neg, adjsrc_resampled_neg, sinkhorn_neg = self._otmmd(-1.0*dobs_resampled, -1.0*dpred_resampled, self.t_scale, self.x_scale, sinkhorn_n)
-            
-        #     adjsrc_resampled = adjsrc_resampled_neg - adjsrc_resampled_pos
-        #     dis = dis_pos + dis_neg
-        # else:
-        #     raise ValueError('Sign option {0} invalid'.format(self.sign_option))
 
-        tpvs, tpvs_grad = get_function('smooth_max')
+        # Use transform function to pre-process the data
+        tpvs, tpvs_grad = get_function(self.trans_func)
         dobs_pv = tpvs(dobs_resampled)
         dpred_pv = tpvs(dpred_resampled)
         dpred_pv_grad = tpvs_grad(dpred_resampled)
