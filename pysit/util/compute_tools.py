@@ -44,7 +44,7 @@ def smoothMax(x):
     return x_pos, x_neg
 
 def smoothMax_gradient(x):
-    dx_pos = -0.5 * (1 + x/(np.sqrt(x**2 + (ep * np.max(x))**2))) #* (np.exp(d/np.max(d))-0.8) #(d**2)
+    dx_pos = 0.5 * (1 + x/(np.sqrt(x**2 + (ep * np.max(x))**2))) #* (np.exp(d/np.max(d))-0.8) #(d**2)
     dx_neg = 0.5 * (1 - x/(np.sqrt(x**2 + (ep * np.max(-x))**2))) #* (np.exp(d/np.max(d))-0.8) #(d**2)
     return dx_pos, dx_neg
 

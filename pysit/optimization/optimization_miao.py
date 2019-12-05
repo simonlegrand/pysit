@@ -8,6 +8,7 @@ import copy
 import math
 import numpy as np
 import scipy.io as sio
+from pysit.util.compute_tools import get_function
 
 __all__=['OptimizationBase']
 
@@ -85,8 +86,7 @@ class OptimizationBase(object):
         self.logfile = sys.stdout
         self.write = False
 
-        self.spos = None
-        self.sneg = None
+        self.sinkhorn_init = None
 
 
     def reset(self,
@@ -384,10 +384,14 @@ class OptimizationBase(object):
             # Compute the gradient
             if self.objective_function.name() == 'SinkhornDivergence':
                 if i == 0:
-                    # sp = np.ones([4,self.objective_function.Nt(),self.objective_function.Nr()])
-                    # sn = np.ones([4,self.objective_function.Nt(),self.objective_function.Nr()])
-                    # gradient, s_p, s_n, adjoint_src, adj_l2 = self.objective_function.compute_gradient(shots, self.base_model, sp, sn, aux_info=aux_info, **objective_arguments)
-                    gradient, adjoint_src, adj_l2 = self.objective_function.compute_gradient(shots, self.base_model, aux_info=aux_info, **objective_arguments)
+                    if self.objective_function.sinkhorn_initialization is True:
+                        tpvs, tpvs_grad = get_function(self.objective_function.trans_func)
+                        xx_pv = tpvs(np.ones([2,3]))
+                        self.sinkhorn_init_ones = np.ones([len(xx_pv),4,self.objective_function.Nt(),self.objective_function.Nr()])
+                        gradient, adjoint_src, adj_l2, sinkhorn_init_output = self.objective_function.compute_gradient(shots, self.base_model, self.sinkhorn_init_ones, aux_info=aux_info, **objective_arguments)
+                        self.sinkhorn_init = sinkhorn_init_output
+                    else:
+                        gradient, adjoint_src, adj_l2 = self.objective_function.compute_gradient(shots, self.base_model, aux_info=aux_info, **objective_arguments)
 
                     ns = int(self.objective_function.parallel_wrap_shot.size/2)
                     if self.use_parallel and (self.objective_function.parallel_wrap_shot.rank != ns):
@@ -398,15 +402,12 @@ class OptimizationBase(object):
                                          }
                         fname = 'adjsrc.mat'
                         sio.savemat(fname, tmp_data_write)
-
-                    # self.spos = s_p
-                    # self.sneg = s_n
                 else:
-                    # gradient, sinkhorn_p, sinkhorn_n, adjoint_src, adj_l2 = self.objective_function.compute_gradient(shots, self.base_model, self.spos, self.sneg, aux_info=aux_info, **objective_arguments)
-                    gradient, adjoint_src, adj_l2 = self.objective_function.compute_gradient(shots, self.base_model, aux_info=aux_info, **objective_arguments)
-
-                    # self.spos = sinkhorn_p
-                    # self.sneg = sinkhorn_n
+                    if self.objective_function.sinkhorn_initialization is True:
+                        gradient, adjoint_src, adj_l2, sinkhorn_init_output = self.objective_function.compute_gradient(shots, self.base_model, self.sinkhorn_init, aux_info=aux_info, **objective_arguments)
+                        self.sinkhorn_init = sinkhorn_init_output
+                    else:
+                        gradient, adjoint_src, adj_l2 = self.objective_function.compute_gradient(shots, self.base_model, aux_info=aux_info, **objective_arguments)
             else:
                 gradient = self.objective_function.compute_gradient(shots, self.base_model, aux_info=aux_info, **objective_arguments)
 
@@ -550,7 +551,10 @@ class OptimizationBase(object):
 
         fp_comp = 1e-6
         if current_objective_value is None:
-            fk = self.objective_function.evaluate(shots, self.base_model, **objective_arguments)
+            if self.objective_function.sinkhorn_initialization is True:
+                fk, sinkhorn_output = self.objective_function.evaluate(shots, self.base_model, self.sinkhorn_init_ones, **objective_arguments)
+            else:
+                fk = self.objective_function.evaluate(shots, self.base_model, **objective_arguments)
         else:
             fk = current_objective_value
 
@@ -565,6 +569,9 @@ class OptimizationBase(object):
         self._print("  Starting: ".format(itercnt), alpha, fk)
         Alphas = []
         Objs = []
+        sinkhorn_output=None
+        # print(np.sum(self.sinkhorn_init))
+        # print('back-track-line-search-sinkhorn-input')
         while not stop:
             # Cut the initial alpha until it is as large as can be and still satisfy the valid conditions for an updated model.
             valid=False
@@ -579,8 +586,11 @@ class OptimizationBase(object):
                 valid = model.validate()
 
             self.solver.model_parameters = model
-            
-            fkp1 = self.objective_function.evaluate(shots, model, **objective_arguments)
+
+            if self.objective_function.sinkhorn_initialization is True:
+                fkp1, sinkhorn_output = self.objective_function.evaluate(shots, self.base_model, self.sinkhorn_init, **objective_arguments)
+            else:
+                fkp1 = self.objective_function.evaluate(shots, model, **objective_arguments)
 
             Alphas.append(alpha)
             Objs.append(fkp1)
@@ -599,6 +609,10 @@ class OptimizationBase(object):
             else:
                 itercnt += 1
                 alpha = alpha * geom_fac
+
+        self.sinkhorn_init = sinkhorn_output
+        # print(np.sum(self.sinkhorn_init))
+        # print('back-track-line-search-sinkhorn-output')
 
         self.prev_alpha = alpha
 

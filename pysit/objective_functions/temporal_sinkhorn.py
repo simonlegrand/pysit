@@ -58,10 +58,11 @@ class SinkhornDivergence(ObjectiveFunctionBase):
         self.nt_resampling = ot_param['nt_resampling']
         #self.resample_window = ot_param['resample_window']
         self.nr = ot_param['N_receivers']
+        self.sinkhorn_initialization = ot_param['sinkhorn_initialization']
         self.filter_op = ot_param['filter_op']
         self.freq_band = ot_param['freq_band']
 
-    def _ot(self, ct, cx, p, q, niter, lamb, epsilon, toler, a=None, b=None):
+    def _ot(self, ct, cx, p, q, niter, lamb, epsilon, toler, a_init=None, b_init=None):
 
         sor = self.sor  # Successive over-relaxation
 
@@ -71,10 +72,12 @@ class SinkhornDivergence(ObjectiveFunctionBase):
         kt = np.exp(-ct/epsilon)
         kx = np.exp(-cx/epsilon)
 
-        if a is None:
+        if a_init is None:
             a = np.ones(p.shape)
-        if b is None:
-            b = np.ones(q.shape)  # a is column and b is line
+            b = np.ones(q.shape)
+        else:
+            a = a_init
+            b = b_init
 
         nerr = int(10)
         cvrgce = np.zeros(int(niter/nerr))
@@ -84,7 +87,7 @@ class SinkhornDivergence(ObjectiveFunctionBase):
 
         while (ii < niter) and (err > toler):
             ii = ii + 1
-            a0 = a
+            a0 = a    # a is column and b is line
             b0 = b
 
             # sinkhorn iterates here
@@ -125,10 +128,13 @@ class SinkhornDivergence(ObjectiveFunctionBase):
         # margin_p = (np.dot(kt.dot(a), kx))*b
         # margin_q = (np.dot(kt.dot(b), kx))*a
 
-        return dis, grad, cvrgce[0:icv] #, ar, br #, margin_p, margin_q
+        if a_init is None:
+            return dis, grad, cvrgce[0:icv]
+        else:
+            return dis, grad, cvrgce[0:icv], ar, br
 
 
-    def _mmd(self, ct, cx, p, niter, lamb, epsilon, toler, a=None):
+    def _mmd(self, ct, cx, p, niter, lamb, epsilon, toler, a_init=None):
 
         le = lamb + epsilon
         pw = lamb/le
@@ -136,8 +142,10 @@ class SinkhornDivergence(ObjectiveFunctionBase):
         kt = np.exp(-ct/epsilon)
         kx = np.exp(-cx/epsilon)
 
-        if a is None:
+        if a_init is None:
             a = np.ones(p.shape)
+        else:
+            a = a_init
 
         nerr = int(10)
         cvrgce = np.zeros(int(niter/nerr))
@@ -173,10 +181,14 @@ class SinkhornDivergence(ObjectiveFunctionBase):
         dis = 2.0*np.sum(at * p) - rt
         grad = 2.0*(at - epsilon * gg)
 
-        return dis, grad, cvrgce[0:icv] #, ar
+        if a_init is None:
+            return dis, grad, cvrgce[0:icv]
+        else:
+            return dis, grad, cvrgce[0:icv], ar
 
 
-    def _otmmd(self, data_obs, data_cal, t_scale, x_scale): #, sinkhorn):
+
+    def _otmmd(self, data_obs, data_cal, t_scale, x_scale, sinkhorn_initial=None): #, sinkhorn):
         ghk_epsilon = self.epsilon_kl
         ghk_lamb2 = self.lamb_kl
         ghk_niter = self.sinkhorn_iterations
@@ -210,24 +222,28 @@ class SinkhornDivergence(ObjectiveFunctionBase):
         mass_dcal = np.sum(q)
         q = q/mass_dobs
         
-        # sinkhorn_init = np.ones([4,np.shape(qs)[0],np.shape(qs)[1]])
-        # dis, grad, conv, sinkhorn_init[0], sinkhorn_init[1] = self._ot(ct, cx, ps, qs, ghk_niter, ghk_lamb2, ghk_epsilon, toler) #, sinkhorn[0], sinkhorn[1])
-        # dis_p, grad_p, conv_p, sinkhorn_init[2] = self._mmd(ct, cx, ps, ghk_niter, ghk_lamb2, ghk_epsilon, toler) #, sinkhorn[2])
-        # dis_q, grad_q, conv_q, sinkhorn_init[3] = self._mmd(ct, cx, qs, ghk_niter, ghk_lamb2, ghk_epsilon, toler) #, sinkhorn[3])
-
-        dis, grad, conv = self._ot(ct, cx, p, q, ghk_niter, ghk_lamb2, ghk_epsilon, toler) #, sinkhorn[0], sinkhorn[1])
-        dis_p, grad_p, conv_p = self._mmd(ct, cx, p, ghk_niter, ghk_lamb2, ghk_epsilon, toler) #, sinkhorn[2])
-        dis_q, grad_q, conv_q = self._mmd(ct, cx, q, ghk_niter, ghk_lamb2, ghk_epsilon, toler) #, sinkhorn[3])
+        if sinkhorn_initial is None:
+            dis, grad, conv = self._ot(ct, cx, p, q, ghk_niter, ghk_lamb2, ghk_epsilon, toler) #, sinkhorn[0], sinkhorn[1])
+            dis_p, grad_p, conv_p = self._mmd(ct, cx, p, ghk_niter, ghk_lamb2, ghk_epsilon, toler) #, sinkhorn[2])
+            dis_q, grad_q, conv_q = self._mmd(ct, cx, q, ghk_niter, ghk_lamb2, ghk_epsilon, toler) #, sinkhorn[3])
+        else:
+            sinkhorn_output = np.zeros_like(np.copy(sinkhorn_initial))
+            dis, grad, conv, sinkhorn_output[0], sinkhorn_output[1] = self._ot(ct, cx, p, q, ghk_niter, ghk_lamb2, ghk_epsilon, toler, sinkhorn_initial[0], sinkhorn_initial[1])
+            dis_p, grad_p, conv_p, sinkhorn_output[2] = self._mmd(ct, cx, p, ghk_niter, ghk_lamb2, ghk_epsilon, toler, sinkhorn_initial[2])
+            dis_q, grad_q, conv_q, sinkhorn_output[3] = self._mmd(ct, cx, q, ghk_niter, ghk_lamb2, ghk_epsilon, toler, sinkhorn_initial[3])
 
         dis = dis + 0.5*ghk_epsilon*(1.0-mass_dcal)**2 - 0.5*(dis_p + dis_q)
         gradient = grad - 0.5*grad_q - ghk_epsilon*(1.0-mass_dcal)
 
         adj_src = gradient/mass_dobs
 
-        return dis, adj_src #, sinkhorn_init
+        if sinkhorn_initial is None:
+            return dis, adj_src
+        else:
+            return dis, adj_src, sinkhorn_output
 
 
-    def _residual(self, shot, m0, dWaveOp=None, wavefield=None):
+    def _residual(self, shot, m0, sinkhorn_init=None, dWaveOp=None, wavefield=None):
         """Computes residual in the usual sense.
 
         Parameters
@@ -296,14 +312,23 @@ class SinkhornDivergence(ObjectiveFunctionBase):
         dobs_pv = tpvs(dobs_resampled)
         dpred_pv = tpvs(dpred_resampled)
         dpred_pv_grad = tpvs_grad(dpred_resampled)
+
         # for elem_tpvs in tpvs:
-        #     dis, adjsrc_resampled, sinkhorn = self._otmmd(elem_tpvs(dobs_resampled), elem_tpvs(dpred_resampled), self.t_scale, self.x_scale) #, sinkhorn_p)
         distance = 0.0
         adjsrc_resampled = np.zeros(np.shape(dobs_resampled))
-        for i in range(len(dobs_pv)):
-            dis, adj = self._otmmd(dobs_pv[i], dpred_pv[i], self.t_scale, self.x_scale) #, sinkhorn_p)
-            adj = adj*dpred_pv_grad[i]
+        if sinkhorn_init is None:
+            for i in range(len(dobs_pv)):
+                dis, adj = self._otmmd(dobs_pv[i], dpred_pv[i], self.t_scale, self.x_scale)
 
+            adj = adj*dpred_pv_grad[i]
+            distance += dis
+            adjsrc_resampled += adj
+        else:
+            sinkhorn_output = np.zeros_like(np.copy(sinkhorn_init))
+            for i in range(len(dobs_pv)):
+                dis, adj, sinkhorn_output[i] = self._otmmd(dobs_pv[i], dpred_pv[i], self.t_scale, self.x_scale, sinkhorn_init[i])
+
+            adj = adj*dpred_pv_grad[i]
             distance += dis
             adjsrc_resampled += adj
         
@@ -319,16 +344,22 @@ class SinkhornDivergence(ObjectiveFunctionBase):
         if wavefield is not None:
             wavefield[:] = retval['wavefield'][:]
 
-        return resid, distance, adj_src #, sinkhorn_pos, sinkhorn_neg
+        if sinkhorn_init is None:
+            return resid, distance, adj_src 
+        else:
+            return resid, distance, adj_src, sinkhorn_output
 
-    def evaluate(self, shots, m0, **kwargs):
+    def evaluate(self, shots, m0, sinkhorn_init=None, **kwargs):
         """ Evaluate the least squares objective function over a list of shots."""
 
         r_norm2 = 0
         objective_value = 0
         for shot in shots:
-            # r, dis, adj_src, sinkhorn_pos, sinkhorn_neg = self._residual(shot, m0, sp, sn)
-            r, dis, adj_src = self._residual(shot, m0)
+            if sinkhorn_init is None:
+                r, dis, adj_src = self._residual(shot, m0)
+            else:
+                r, dis, adj_src, sinkhorn_output = self._residual(shot, m0, sinkhorn_init)
+    
             r_norm2 += np.linalg.norm(r)**2
             objective_value += dis
 
@@ -343,10 +374,12 @@ class SinkhornDivergence(ObjectiveFunctionBase):
             self.parallel_wrap_shot.comm.Allreduce(np.array(objective_value), new_objective_value)
             objective_value = new_objective_value[()] # goofy way to access 0-D array element
 
-        return objective_value  #*self.solver.dt  #, r_norm2*self.solver.dt
+        if sinkhorn_init is None:
+            return objective_value  #*self.solver.dt  #, r_norm2*self.solver.dt
+        else:
+            return objective_value, sinkhorn_output
 
-
-    def _gradient_helper(self, shot, m0, ignore_minus=False, ret_pseudo_hess_diag_comp = False, **kwargs):
+    def _gradient_helper(self, shot, m0, sinkhorn_init=None, ignore_minus=False, ret_pseudo_hess_diag_comp = False, **kwargs):
         """Helper function for computing the component of the gradient due to a
         single shot.
 
@@ -370,8 +403,10 @@ class SinkhornDivergence(ObjectiveFunctionBase):
         else:
             wavefield=None
         
-        # r, dis, adjoint_src, sinkhorn_pos, sinkhorn_neg = self._residual(shot, m0, sp, sn, dWaveOp=dWaveOp, wavefield=wavefield, **kwargs)
-        r, dis, adjoint_src = self._residual(shot, m0, dWaveOp=dWaveOp, wavefield=wavefield, **kwargs)
+        if sinkhorn_init is None:
+            r, dis, adjoint_src = self._residual(shot, m0, dWaveOp=dWaveOp, wavefield=wavefield, **kwargs)
+        else:
+            r, dis, adjoint_src, sinkhorn_output = self._residual(shot, m0, sinkhorn_init, dWaveOp=dWaveOp, wavefield=wavefield, **kwargs)
 
         # Perform the migration or F* operation to get the gradient component
         g = self.modeling_tools.migrate_shot(shot, m0, adjoint_src, self.imaging_period, dWaveOp=dWaveOp, wavefield=wavefield)
@@ -382,8 +417,11 @@ class SinkhornDivergence(ObjectiveFunctionBase):
         if ret_pseudo_hess_diag_comp:
             return r, g, dis, self._pseudo_hessian_diagonal_component_shot(dWaveOp)
         else:
-            return r, g, dis, adjoint_src
-
+            if sinkhorn_init is None:
+                return r, g, dis, adjoint_src
+            else:
+                return r, g, dis, adjoint_src, sinkhorn_output
+                
     def _pseudo_hessian_diagonal_component_shot(self, dWaveOp):
         #Shin 2001: "Improved amplitude preservation for prestack depth migration by inverse scattering theory". 
         #Basic illumination compensation. In here we compute the diagonal. It is not perfect, it does not include receiver coverage for instance.
@@ -403,7 +441,7 @@ class SinkhornDivergence(ObjectiveFunctionBase):
 
         return pseudo_hessian_diag_contrib
 
-    def compute_gradient(self, shots, m0, aux_info={}, **kwargs):
+    def compute_gradient(self, shots, m0, sinkhorn_init=None, aux_info={}, **kwargs):
         """Compute the gradient for a set of shots.
 
         Computes the gradient as
@@ -428,8 +466,11 @@ class SinkhornDivergence(ObjectiveFunctionBase):
                 r, g, dis, h = self._gradient_helper(shot, m0, ignore_minus=True, ret_pseudo_hess_diag_comp = True, **kwargs)
                 pseudo_h_diag += h 
             else:
-                r, g, dis, adjoint_src = self._gradient_helper(shot, m0, ignore_minus=True, **kwargs)
-            
+                if sinkhorn_init is None:
+                    r, g, dis, adjoint_src = self._gradient_helper(shot, m0, ignore_minus=True, **kwargs)
+                else:
+                    r, g, dis, adjoint_src, sinkhorn_output = self._gradient_helper(shot, m0, sinkhorn_init, ignore_minus=True, **kwargs)
+
             grad -= g # handle the minus 1 in the definition of the gradient of this objective
             r_norm2 += np.linalg.norm(r)**2
             objective_value += dis
@@ -467,7 +508,10 @@ class SinkhornDivergence(ObjectiveFunctionBase):
         if ('pseudo_hess_diag' in aux_info) and aux_info['pseudo_hess_diag'][0]:
             aux_info['pseudo_hess_diag'] = (True, pseudo_h_diag)
 
-        return grad, adjoint_src, r
+        if sinkhorn_init is None:
+            return grad, adjoint_src, r
+        else:
+            return grad, adjoint_src, r, sinkhorn_output
 
     def apply_hessian(self, shots, m0, m1, hessian_mode='approximate', levenberg_mu=0.0, *args, **kwargs):
 
