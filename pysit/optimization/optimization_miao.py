@@ -397,7 +397,7 @@ class OptimizationBase(object):
                     if self.use_parallel and (self.objective_function.parallel_wrap_shot.rank != ns):
                         []
                     else:
-                        tmp_data_write = {'adjoint-source': adjoint_src,
+                        tmp_data_write = {'adjoint-source-sd': adjoint_src,
                                           'adjoint-source-l2': adj_l2,  
                                          }
                         fname = 'adjsrc.mat'

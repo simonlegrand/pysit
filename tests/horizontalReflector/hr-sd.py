@@ -95,7 +95,7 @@ if __name__ == '__main__':
     print('Running LBFGS...')
     tt = time.time()
 
-    nsteps = 10
+    nsteps = 2
 
     status_configuration = {'value_frequency'           : 1,
                             'residual_frequency'        : 1,
@@ -149,7 +149,8 @@ if __name__ == '__main__':
               'gradient': gradient,
               'x_range': [d.x.lbound, d.x.rbound],
               'z_range': [d.z.lbound, d.z.rbound],
-              't_range': t_range
+              't_range': t_range,
+              'obj_name': objective.name(),
               }
 
     sio.savemat('./output.mat', output)

@@ -132,7 +132,7 @@ def save_wavefields_time_plot(wfrs, t_range, output_dir:str):
     fig.savefig(filepath)
 
 
-def save_adjoint_source_plot(adj, ext: list, clim: list, output_dir: str):
+def save_adjoint_source_plot(adj, ext: list, clim: list, output_dir: str, name:str):
     """
     Save adjoint source plot in output_dir
     """
@@ -144,7 +144,7 @@ def save_adjoint_source_plot(adj, ext: list, clim: list, output_dir: str):
     # Make a colorbar for the ContourSet returned by the contourf call.
     cbar = fig.colorbar(aa)
     cbar.ax.set_ylabel('Amplitude')
-    filepath = os.path.join(output_dir, 'adjoint_source_l2.png')
+    filepath = os.path.join(output_dir, 'adjoint_source_'+name+'.png')
     fig.savefig(filepath)
 
 
@@ -264,6 +264,9 @@ def get_velocity_profiles(base_dir: str, pattern: str, mesh):
     # Iteration number list
     it_nbrs = ['iter_'+x.split('.')[0][2:] for x in res_file_list]
     it_nbrs.sort()
+    # print(it_nbrs)
+    # int_it_nbrs = [int(x) for x in it_nbrs]
+    # int_it_nbrs.sort()
 
     X = [loadmat(x) for x in res_file_list]
     V = [np.reshape(x['data'],mesh.shape(as_grid=True)).transpose() for x in X]
@@ -356,4 +359,7 @@ if __name__ == "__main__":
     ### Adjoint source
     adj_l2 = wavefields['True'] - wavefields['Initial']
     clim = np.min(adj_l2),np.max(adj_l2)
-    save_adjoint_source_plot(adj_l2, extent, clim, p_dir)
+    save_adjoint_source_plot(adj_l2, extent, clim, p_dir, 'l2')
+    if output['obj_name'] == 'SinkhornDivergence':
+        adj_sd = loadmat(os.path.join(res_dir, 'adjsrc.mat'))['adjoint-source-sd']
+        save_adjoint_source_plot(adj_sd, extent, clim, p_dir, 'sd')
