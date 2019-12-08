@@ -80,6 +80,7 @@ if __name__ == '__main__':
                  't_scale'                      : 10.0,
                  'x_scale'                      : 10.0,
                  'nt_resampling'                : 128,
+                 'sinkhorn_initialization'      : True,
                  'N_receivers'                  : Nreceivers,
                  'filter_op'                    : False,
                  'freq_band'                    : [1, 30.0],
@@ -94,7 +95,7 @@ if __name__ == '__main__':
     print('Running LBFGS...')
     tt = time.time()
 
-    nsteps = 2
+    nsteps = 10
 
     status_configuration = {'value_frequency'           : 1,
                             'residual_frequency'        : 1,
