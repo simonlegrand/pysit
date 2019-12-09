@@ -45,7 +45,7 @@ if __name__ == '__main__':
     t_range = (0.0,1.5)
 
     solver = ConstantDensityAcousticWave(m,
-                                         spatial_accuracy_order=2,
+                                         spatial_accuracy_order=6,
                                          trange=t_range,
                                          kernel_implementation='cpp')
 
