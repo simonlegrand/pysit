@@ -88,29 +88,29 @@ if __name__ == '__main__':
     ############# Set up objective function ##############
 
     #### Least-squares objective function
-    if rank == 0:
-        print('Least-squares...')
-    objective = TemporalLeastSquares(solver, parallel_wrap_shot=pwrap)
+    # if rank == 0:
+    #     print('Least-squares...')
+    # objective = TemporalLeastSquares(solver, parallel_wrap_shot=pwrap)
 
     #### Sinkhorn-Divergence objective function
-    # if rank == 0:
-    #     print('Sinkhorn Divergence...')
-    # ot_param = { 'sinkhorn_iterations'          : 10000,
-    #              'sinkhorn_tolerance'           : 1.0e-9,
-    #              'epsilon_maxsmooth'            : 1.0e-5,   # for the smoothing of the max(., 0)
-    #              'successive_over_relaxation'   : 1.4,
-    #              'trans_func_type'              : 'smooth_max',  ## smooth_max ## exp ##
-    #              'epsilon_kl'                   : 1e-2,
-    #              'lamb_kl'                      : 1.0,
-    #              't_scale'                      : 10.0,
-    #              'x_scale'                      : 10.0,
-    #              'nt_resampling'                : 128,
-    #              'sinkhorn_initialization'      : True,
-    #              'N_receivers'                  : Nreceivers,
-    #              'filter_op'                    : False,
-    #              'freq_band'                    : [1, 30.0],
-    #            }
-    # objective = SinkhornDivergence(solver, ot_param=ot_param, parallel_wrap_shot=pwrap)
+    if rank == 0:
+        print('Sinkhorn Divergence...')
+    ot_param = { 'sinkhorn_iterations'          : 10000,
+                 'sinkhorn_tolerance'           : 1.0e-9,
+                 'epsilon_maxsmooth'            : 1.0e-5,   # for the smoothing of the max(., 0)
+                 'successive_over_relaxation'   : 1.4,
+                 'trans_func_type'              : 'smooth_max',  ## smooth_max ## exp ##
+                 'epsilon_kl'                   : 1e-2,
+                 'lamb_kl'                      : 1.0,
+                 't_scale'                      : 10.0,
+                 'x_scale'                      : 10.0,
+                 'nt_resampling'                : 128,
+                 'sinkhorn_initialization'      : True,
+                 'N_receivers'                  : Nreceivers,
+                 'filter_op'                    : False,
+                 'freq_band'                    : [1, 30.0],
+               }
+    objective = SinkhornDivergence(solver, ot_param=ot_param, parallel_wrap_shot=pwrap)
 
     # Define the inversion algorithm
     line_search = 'backtrack'
