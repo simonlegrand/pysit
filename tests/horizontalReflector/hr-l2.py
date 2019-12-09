@@ -46,11 +46,11 @@ if __name__ == '__main__':
     zpos = zmin + (1./9.)*zmax
 
     Nshots = size
-    Nreceivers = 60
+    Nreceivers = 'max'
     sys.stdout.write("{0}: {1}\n".format(rank, Nshots / size))
 
     shots = equispaced_acquisition(m,
-                                   RickerWavelet(10.0),
+                                   RickerWavelet(3.0),
                                    sources=Nshots,
                                    source_depth=zpos,
                                    source_kwargs={},
@@ -63,7 +63,7 @@ if __name__ == '__main__':
     # shots_freq = copy.deepcopy(shots)
 
     # Define and configure the wave solver
-    t_range = (0.0,1.5)
+    t_range = (0.0,2.5)
 
     solver = ConstantDensityAcousticWave(m,
                                          spatial_accuracy_order=6,
@@ -153,7 +153,7 @@ if __name__ == '__main__':
     # Execute inversion algorithm
     tt = time.time()
 
-    nsteps = 2
+    nsteps = 20
     result = invalg(shots, initial_value, nsteps,
                     line_search=line_search,
                     status_configuration=status_configuration, verbose=True, write=True)
