@@ -551,8 +551,11 @@ class OptimizationBase(object):
 
         fp_comp = 1e-6
         if current_objective_value is None:
-            if self.objective_function.sinkhorn_initialization is True:
-                fk, sinkhorn_output = self.objective_function.evaluate(shots, self.base_model, self.sinkhorn_init_ones, **objective_arguments)
+            if self.objective_function.name() == 'SinkhornDivergence':
+                if self.objective_function.sinkhorn_initialization is True:
+                    fk, sinkhorn_output = self.objective_function.evaluate(shots, self.base_model, self.sinkhorn_init_ones, **objective_arguments)
+                else:
+                    fk = self.objective_function.evaluate(shots, self.base_model, **objective_arguments)
             else:
                 fk = self.objective_function.evaluate(shots, self.base_model, **objective_arguments)
         else:
@@ -587,8 +590,11 @@ class OptimizationBase(object):
 
             self.solver.model_parameters = model
 
-            if self.objective_function.sinkhorn_initialization is True:
-                fkp1, sinkhorn_output = self.objective_function.evaluate(shots, self.base_model, self.sinkhorn_init, **objective_arguments)
+            if self.objective_function.name() == 'SinkhornDivergence':
+                if self.objective_function.sinkhorn_initialization is True:
+                    fkp1, sinkhorn_output = self.objective_function.evaluate(shots, self.base_model, self.sinkhorn_init, **objective_arguments)
+                else:
+                    fkp1 = self.objective_function.evaluate(shots, model, **objective_arguments)
             else:
                 fkp1 = self.objective_function.evaluate(shots, model, **objective_arguments)
 
