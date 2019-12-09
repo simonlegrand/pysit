@@ -42,16 +42,6 @@ if __name__ == '__main__':
                                                       'initial_thickness': (1.0, 5.0)},
                                      )
 
-    # m_shape = m._shapes[(False,True)]
-    # pmlx = PML(0.5, 1.0)
-    # pmlz = PML(0.5, 1.0)
-
-    # x_config = (d.x.lbound, d.x.rbound, pmlx, pmlx)
-    # z_config = (d.z.lbound, d.z.rbound, pmlz, pmlz)
-
-    # d = RectangularDomain(x_config, z_config)
-    # m = CartesianMesh(d, m_shape[0], m_shape[1])
-
     # Set up shots
     zmin = d.z.lbound
     zmax = d.z.rbound
@@ -72,14 +62,14 @@ if __name__ == '__main__':
                                    parallel_shot_wrap=pwrap,
                                    )
 
-    shots_freq = copy.deepcopy(shots)
+    # shots_freq = copy.deepcopy(shots)
 
     # Define and configure the wave solver
     t_range = (0.0,4.0)
 
     solver = ConstantDensityAcousticWave(m,
                                          spatial_accuracy_order=6,
-                                         t_range=t_range,
+                                         trange=t_range,
                                          kernel_implementation='cpp',
                                          ) 
     # Generate synthetic Seismic data
@@ -171,7 +161,7 @@ if __name__ == '__main__':
     C_cut = initial_value.without_padding().data
     C_inverted = C_cut.reshape(m.shape(as_grid=True)).transpose()
 
-####################################################################################################
+    ####################################################################################################
     # Save wavefield
     inverted_model = solver.ModelParameters(m,{'C': C_cut})
     generate_seismic_data(shots, solver, inverted_model)
