@@ -45,7 +45,7 @@ if __name__ == '__main__':
     zpos = 0.05 * 1.0
 
     Nshots = size
-    Nreceivers = 301
+    Nreceivers = 'max'
     sys.stdout.write("{0}: {1}\n".format(rank, Nshots / size))
 
     shots = equispaced_acquisition(m,
@@ -149,7 +149,7 @@ if __name__ == '__main__':
     # Execute inversion algorithm
     tt = time.time()
 
-    nsteps = 2
+    nsteps = 100
     result = invalg(shots, initial_value, nsteps,
                         line_search=line_search,
                         status_configuration=status_configuration, verbose=True, write=True)

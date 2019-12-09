@@ -151,7 +151,7 @@ if __name__ == '__main__':
     # Execute inversion algorithm
     tt = time.time()
 
-    nsteps = 2
+    nsteps = 20
     result = invalg(shots, initial_value, nsteps,
                     line_search=line_search,
                     status_configuration=status_configuration, verbose=True, write=True)
