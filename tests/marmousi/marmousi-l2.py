@@ -2,7 +2,6 @@
 import time
 import pickle
 import numpy as np
-import math
 
 import copy
 import sys
@@ -30,19 +29,6 @@ if __name__ == '__main__':
     # Set up domain, mesh and velocity model
     C, C0, m, d = marmousi(patch='mini_square')
 
-    # m_shape = m._shapes[(False,True)]
-    # pmlx = PML(0.5, 1000)
-    # pmlz = PML(0.5, 1000)
-
-    # x_config = (d.x.lbound/1000.0, d.x.rbound/1000.0, pmlx, pmlx)
-    # z_config = (d.z.lbound/1000.0, d.z.rbound/1000.0, pmlz, pmlz)
-
-    # d = RectangularDomain(x_config, z_config)
-    # m = CartesianMesh(d, m_shape[0], m_shape[1])
-    
-    # C = C/1000
-    # C0 = C0/1000
-
     # Set up shots
     zmin = d.z.lbound
     zmax = d.z.rbound
@@ -63,18 +49,18 @@ if __name__ == '__main__':
                                    parallel_shot_wrap=pwrap,
                                    )
 
-    shots_freq = copy.deepcopy(shots)
+    # shots_freq = copy.deepcopy(shots)
 
     # Define and configure the wave solver
-    trange = (0.0,5.0)
+    t_range = (0.0,5.0)
 
     solver = ConstantDensityAcousticWave(m,
                                          spatial_accuracy_order=6,
-                                         trange=trange,
+                                         trange=t_range,
                                          kernel_implementation='cpp',
                                          ) 
     # Generate synthetic Seismic data
-    if rank == 0:
+    if rank == 0:    
         sys.stdout.write('Generating data...')
 
     initial_model = solver.ModelParameters(m,{'C': C0})
@@ -96,11 +82,33 @@ if __name__ == '__main__':
         sys.stdout.write('Total wall time: {0}\n'.format(tttt))
         sys.stdout.write('Total wall time/shot: {0}\n'.format(tttt/Nshots))
 
-    # Least-squares objective function
+    ############# Set up objective function ##############
+
+    #### Least-squares objective function
     if rank == 0:
         print('Least-squares...')
     objective = TemporalLeastSquares(solver, parallel_wrap_shot=pwrap)
-   
+
+    #### Sinkhorn-Divergence objective function
+    # if rank == 0:
+    #     print('Sinkhorn Divergence...')
+    # ot_param = { 'sinkhorn_iterations'          : 10000,
+    #              'sinkhorn_tolerance'           : 1.0e-9,
+    #              'epsilon_maxsmooth'            : 1.0e-5,   # for the smoothing of the max(., 0)
+    #              'successive_over_relaxation'   : 1.4,
+    #              'trans_func_type'              : 'smooth_max',  ## smooth_max ## exp ##
+    #              'epsilon_kl'                   : 1e-2,
+    #              'lamb_kl'                      : 1.0,
+    #              't_scale'                      : 10.0,
+    #              'x_scale'                      : 10.0,
+    #              'nt_resampling'                : 128,
+    #              'sinkhorn_initialization'      : True,
+    #              'N_receivers'                  : Nreceivers,
+    #              'filter_op'                    : False,
+    #              'freq_band'                    : [1, 30.0],
+    #            }
+    # objective = SinkhornDivergence(solver, ot_param=ot_param, parallel_wrap_shot=pwrap)
+
     # Define the inversion algorithm
     line_search = 'backtrack'
     status_configuration = {'value_frequency'           : 1,
@@ -125,12 +133,13 @@ if __name__ == '__main__':
 
     if rank == 0:
         print('Running LBFGS...')
+        
     invalg = LBFGS(objective, memory_length=10)
     initial_value = solver.ModelParameters(m, {'C': C0})
     # Execute inversion algorithm
     tt = time.time()
 
-    nsteps = 30
+    nsteps = 100
     result = invalg(shots, initial_value, nsteps,
                         line_search=line_search,
                         status_configuration=status_configuration, verbose=True, write=True)
@@ -139,7 +148,7 @@ if __name__ == '__main__':
     C_cut = initial_value.without_padding().data
     C_inverted = C_cut.reshape(m.shape(as_grid=True)).transpose()
 
-####################################################################################################
+    ####################################################################################################
     # Save wavefield
     inverted_model = solver.ModelParameters(m,{'C': C_cut})
     generate_seismic_data(shots, solver, inverted_model)
@@ -168,7 +177,8 @@ if __name__ == '__main__':
                   'gradient': gradient,
                   'x_range': [d.x.lbound, d.x.rbound],
                   'z_range': [d.z.lbound, d.z.rbound],
-                  't_range': trange
+                  't_range': t_range,
+                  'obj_name': objective.name(),
                   }
 
         sio.savemat('./output.mat', output)
