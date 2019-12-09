@@ -2,7 +2,6 @@
 import time
 import pickle
 import numpy as np
-import math
 
 import copy
 import sys
@@ -76,11 +75,11 @@ if __name__ == '__main__':
     shots_freq = copy.deepcopy(shots)
 
     # Define and configure the wave solver
-    trange = (0.0,4.0)
+    t_range = (0.0,4.0)
 
     solver = ConstantDensityAcousticWave(m,
                                          spatial_accuracy_order=6,
-                                         trange=trange,
+                                         t_range=t_range,
                                          kernel_implementation='cpp',
                                          ) 
     # Generate synthetic Seismic data
@@ -106,11 +105,33 @@ if __name__ == '__main__':
         sys.stdout.write('Total wall time: {0}\n'.format(tttt))
         sys.stdout.write('Total wall time/shot: {0}\n'.format(tttt/Nshots))
 
-    # Least-squares objective function
+    ############# Set up objective function ##############
+
+    #### Least-squares objective function
     if rank == 0:
         print('Least-squares...')
     objective = TemporalLeastSquares(solver, parallel_wrap_shot=pwrap)
-   
+
+    #### Sinkhorn-Divergence objective function
+    # if rank == 0:
+    #     print('Sinkhorn Divergence...')
+    # ot_param = { 'sinkhorn_iterations'          : 10000,
+    #              'sinkhorn_tolerance'           : 1.0e-9,
+    #              'epsilon_maxsmooth'            : 1.0e-5,   # for the smoothing of the max(., 0)
+    #              'successive_over_relaxation'   : 1.4,
+    #              'trans_func_type'              : 'smooth_max',  ## smooth_max ## exp ##
+    #              'epsilon_kl'                   : 1e-2,
+    #              'lamb_kl'                      : 1.0,
+    #              't_scale'                      : 10.0,
+    #              'x_scale'                      : 10.0,
+    #              'nt_resampling'                : 128,
+    #              'sinkhorn_initialization'      : True,
+    #              'N_receivers'                  : Nreceivers,
+    #              'filter_op'                    : False,
+    #              'freq_band'                    : [1, 30.0],
+    #            }
+    # objective = SinkhornDivergence(solver, ot_param=ot_param, parallel_wrap_shot=pwrap)
+
     # Define the inversion algorithm
     line_search = 'backtrack'
     status_configuration = {'value_frequency'           : 1,
@@ -179,7 +200,8 @@ if __name__ == '__main__':
                   'gradient': gradient,
                   'x_range': [d.x.lbound, d.x.rbound],
                   'z_range': [d.z.lbound, d.z.rbound],
-                  't_range': trange
+                  't_range': t_range,
+                  'obj_name': objective.name(),
                   }
 
         sio.savemat('./output.mat', output)
