@@ -29,8 +29,8 @@ if __name__ == '__main__':
     # Set up domain, mesh and velocity model
     C, C0, m, d = bp(patch='right', pixel_scale='mini', initial_model_style='smooth_low_pass', initial_config={'freq':1/3000.})
     
-    C = C/1000
-    C0 = C0/1000
+    # C = C/1000
+    # C0 = C0/1000
 
     # Set up shots
     zmin = d.z.lbound
