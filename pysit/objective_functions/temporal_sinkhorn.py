@@ -31,7 +31,10 @@ class SinkhornDivergence(ObjectiveFunctionBase):
         return a
 
     def Nr(self):
-        return self.nr 
+        if self.nr == 'max':
+            return self.solver.mesh.x.n
+        else:
+            return self.nr 
 
     def Nt(self):
         return self.nt_resampling
@@ -57,7 +60,7 @@ class SinkhornDivergence(ObjectiveFunctionBase):
         self.t_scale = ot_param['t_scale']
         self.nt_resampling = ot_param['nt_resampling']
         #self.resample_window = ot_param['resample_window']
-        self.nr = self.solver.mesh.x.n #ot_param['N_receivers']
+        self.nr = ot_param['N_receivers']
         self.sinkhorn_initialization = ot_param['sinkhorn_initialization']
         self.filter_op = ot_param['filter_op']
         self.freq_band = ot_param['freq_band']
