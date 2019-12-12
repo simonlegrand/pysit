@@ -38,7 +38,8 @@ def save_convergence_plot(conv, output_dir: str):
     plt.semilogy(conv[0]/np.max(conv[0])) 
     plt.xlabel('Iteration')
     plt.ylabel('Objective value')
-    plt.title('FWI convergence curve')                                    
+    plt.title('FWI convergence curve')
+    plt.xticks(np.arange(10)*np.shape(conv)[1]/10)                               
     plt.grid(True)
     fig.savefig(os.path.join(output_dir, 'conv.png')) 
 
@@ -137,9 +138,10 @@ def save_adjoint_source_plot(adj, ext: list, clim: list, output_dir: str, name:s
     Save adjoint source plot in output_dir
     """
     fig, ax = plt.subplots(figsize=(32,12))
-    aa=plt.imshow(adj, interpolation='nearest', aspect='auto', cmap='gray', clim=clim,
+    aa=plt.imshow(adj, interpolation='nearest', aspect='auto', cmap='seismic', clim=clim,
             extent=ext)
-    ax.set(xlabel='Offset [km]', ylabel='Time [s]', title='Adjoint sources of the first iteration -- L2')
+    title = name + ' - adjoint source of the first iteration'
+    ax.set(xlabel='Offset [km]', ylabel='Time [s]', title=title)
     ax.set_aspect('auto')
     # Make a colorbar for the ContourSet returned by the contourf call.
     cbar = fig.colorbar(aa)
@@ -358,8 +360,9 @@ if __name__ == "__main__":
 
     ### Adjoint source
     adj_l2 = wavefields['True'] - wavefields['Initial']
-    clim = np.min(adj_l2),np.max(adj_l2)
-    save_adjoint_source_plot(adj_l2, extent, clim, p_dir, 'l2')
+    clim = [-1.0*np.max(adj_l2),1.0*np.max(adj_l2)]
+    save_adjoint_source_plot(adj_l2, extent, clim, p_dir, 'L2')
     if output['obj_name'] == 'SinkhornDivergence':
         adj_sd = loadmat(os.path.join(res_dir, 'adjsrc.mat'))['adjoint-source-sd']
-        save_adjoint_source_plot(adj_sd, extent, clim, p_dir, 'sd')
+        clim = [np.min(adj_sd),np.max(adj_sd)]
+        save_adjoint_source_plot(adj_sd, extent, clim, p_dir, 'SD')
