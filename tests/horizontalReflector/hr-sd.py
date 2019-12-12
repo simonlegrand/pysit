@@ -112,9 +112,9 @@ if __name__ == '__main__':
                  'epsilon_maxsmooth'            : 1.0e-5,   # for the smoothing of the max(., 0)
                  'successive_over_relaxation'   : 1.4,
                  'trans_func_type'              : 'smooth_max',  ## smooth_max ## exp ## square ## id ##
-                 'epsilon_kl'                   : 1e-1,
+                 'epsilon_kl'                   : 1e-2,
                  'lamb_kl'                      : 1.0,
-                 't_scale'                      : 0.1,
+                 't_scale'                      : 1.0,
                  'x_scale'                      : 1.0,
                  'nt_resampling'                : 128,
                  'sinkhorn_initialization'      : True,
