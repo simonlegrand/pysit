@@ -25,10 +25,24 @@ if __name__ == '__main__':
 
     if rank == 0:
         ttt = time.time()
+        sys.stdout.write('BP model \n')
 
     # Set up domain, mesh and velocity model
-    C, C0, m, d = bp(patch='right', pixel_scale='mini', initial_model_style='smooth_low_pass', initial_config={'freq':1/3000.})
+    m_param = {'patch'                 : 'right', 
+               'pixel_scale'           : 'mini', 
+               'initial_model_style'   : 'smooth_low_pass', 
+               'initial_config'        : {'freq':1/3000.},
+               }
+    C, C0, m, d = bp(patch=m_param['patch'], pixel_scale=m_param['pixel_scale'], 
+                    initial_model_style=m_param['initial_model_style'], 
+                    initial_config=m_param['initial_config'])
     
+    if rank == 0:
+        sys.stdout.write('patch = %s \n' %m_param['patch'])
+        sys.stdout.write('pixel_scale = %s \n' %m_param['pixel_scale'])
+        sys.stdout.write('initial_model_style = %s \n' %m_param['initial_model_style'])
+        sys.stdout.write('initial_config = %s \n' %m_param['initial_config'])
+
     # C = C/1000
     # C0 = C0/1000
 
@@ -39,10 +53,11 @@ if __name__ == '__main__':
 
     Nshots = size
     Nreceivers = 301
+    Ric_freq = 10.0
     sys.stdout.write("{0}: {1}\n".format(rank, Nshots / size))
 
     shots = equispaced_acquisition(m,
-                                   RickerWavelet(10.0),
+                                   RickerWavelet(Ric_freq),
                                    sources=Nshots,
                                    source_depth=zpos,
                                    source_kwargs={},
@@ -62,9 +77,18 @@ if __name__ == '__main__':
                                          trange=t_range,
                                          kernel_implementation='cpp',
                                          ) 
+
     # Generate synthetic Seismic data
     if rank == 0:
-        sys.stdout.write('Generating data...')
+        sys.stdout.write('Model parameters setting: \n')
+        sys.stdout.write('Nshots = %d \n' %Nshots)
+        if Nreceivers == 'max':
+            sys.stdout.write('Nreceivers = %d \n' %m.x.n)
+        else:
+            sys.stdout.write('Nreceivers = %d \n' %Nreceivers)
+        sys.stdout.write('Ricker wavelet frequency = %.1f Hz \n' %Ric_freq)
+        sys.stdout.write('Recording time = %.1f s\n' %t_range[1])
+        sys.stdout.write('Generating data... \n')
 
     initial_model = solver.ModelParameters(m,{'C': C0})
     generate_seismic_data(shots, solver, initial_model)
@@ -86,6 +110,22 @@ if __name__ == '__main__':
         sys.stdout.write('Total wall time/shot: {0}\n'.format(tttt/Nshots))
 
     ############# Set up objective function ##############
+    # ot_param = { 'sinkhorn_iterations'          : 10000,
+    #              'sinkhorn_tolerance'           : 1.0e-9,
+    #              'epsilon_maxsmooth'            : 1.0e-5,   # for the smoothing of the max(., 0)
+    #              'successive_over_relaxation'   : 1.4,
+    #              'trans_func_type'              : 'smooth_max',  ## smooth_max ## exp ## square ## id ##
+    #              'epsilon_kl'                   : 1e-2,
+    #              'lamb_kl'                      : 1.0,
+    #              't_scale'                      : 1.0,
+    #              'x_scale'                      : 1.0,
+    #              'nt_resampling'                : 128,
+    #              'sinkhorn_initialization'      : True,
+    #             #  'Noise'                        : False,
+    #              'N_receivers'                  : Nreceivers,
+    #              'filter_op'                    : False,
+    #              'freq_band'                    : [1, 30.0],
+    #            }
 
     #### Least-squares objective function
     if rank == 0:
@@ -95,21 +135,15 @@ if __name__ == '__main__':
     #### Sinkhorn-Divergence objective function
     # if rank == 0:
     #     print('Sinkhorn Divergence...')
-    # ot_param = { 'sinkhorn_iterations'          : 10000,
-    #              'sinkhorn_tolerance'           : 1.0e-9,
-    #              'epsilon_maxsmooth'            : 1.0e-5,   # for the smoothing of the max(., 0)
-    #              'successive_over_relaxation'   : 1.4,
-    #              'trans_func_type'              : 'smooth_max',  ## smooth_max ## exp ##
-    #              'epsilon_kl'                   : 1e-2,
-    #              'lamb_kl'                      : 1.0,
-    #              't_scale'                      : 10.0,
-    #              'x_scale'                      : 10.0,
-    #              'nt_resampling'                : 128,
-    #              'sinkhorn_initialization'      : True,
-    #              'N_receivers'                  : Nreceivers,
-    #              'filter_op'                    : False,
-    #              'freq_band'                    : [1, 30.0],
-    #            }
+    #     print('Sinkhorn Divergence parameters setting:')
+    #     print('trans_func_type = %s' %ot_param['trans_func_type'])
+    #     print('sinkhorn_initialization = %s' %ot_param['sinkhorn_initialization'])
+    #     print('sinkhorn_epsilon_kl = %.1f' %ot_param['epsilon_kl'])
+    #     print('sinkhorn_lamb_kl = %.1f' %ot_param['lamb_kl'])
+    #     print('sinkhorn_t_scale = %.1f' %ot_param['t_scale'])
+    #     print('sinkhorn_x_scale = %.1f' %ot_param['x_scale'])
+    #     print('sinkhorn_nt_resampling = %d' %ot_param['nt_resampling'])
+
     # objective = SinkhornDivergence(solver, ot_param=ot_param, parallel_wrap_shot=pwrap)
 
     # Define the inversion algorithm
@@ -142,7 +176,7 @@ if __name__ == '__main__':
     # Execute inversion algorithm
     tt = time.time()
 
-    nsteps = 100
+    nsteps = 50
     result = invalg(shots, initial_value, nsteps,
                         line_search=line_search,
                         status_configuration=status_configuration, verbose=True, write=True)
