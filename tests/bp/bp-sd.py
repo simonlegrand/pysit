@@ -43,6 +43,16 @@ if __name__ == '__main__':
         sys.stdout.write('initial_model_style = %s \n' %m_param['initial_model_style'])
         sys.stdout.write('initial_config = %s \n' %m_param['initial_config'])
 
+    m_shape = m._shapes[(False,True)]
+    pmlx = PML(0.5, 1000)
+    pmlz = PML(0.5, 1000)
+
+    x_config = (d.x.lbound/1000.0, d.x.rbound/1000.0, pmlx, pmlx)
+    z_config = (d.z.lbound/1000.0, d.z.rbound/1000.0, pmlz, pmlz)
+
+    d = RectangularDomain(x_config, z_config)
+    m = CartesianMesh(d, m_shape[0], m_shape[1])
+
     C = C/1000
     C0 = C0/1000
 
@@ -117,7 +127,7 @@ if __name__ == '__main__':
                  'trans_func_type'              : 'smooth_max',  ## smooth_max ## exp ## square ## id ##
                  'epsilon_kl'                   : 1e-2,
                  'lamb_kl'                      : 1.0,
-                 't_scale'                      : 1.0,
+                 't_scale'                      : 10.0,
                  'x_scale'                      : 1.0,
                  'nt_resampling'                : 128,
                  'sinkhorn_initialization'      : True,
@@ -138,7 +148,7 @@ if __name__ == '__main__':
         print('Sinkhorn Divergence parameters setting:')
         print('trans_func_type = %s' %ot_param['trans_func_type'])
         print('sinkhorn_initialization = %s' %ot_param['sinkhorn_initialization'])
-        print('sinkhorn_epsilon_kl = %.1f' %ot_param['epsilon_kl'])
+        print('sinkhorn_epsilon_kl = %.3f' %ot_param['epsilon_kl'])
         print('sinkhorn_lamb_kl = %.1f' %ot_param['lamb_kl'])
         print('sinkhorn_t_scale = %.1f' %ot_param['t_scale'])
         print('sinkhorn_x_scale = %.1f' %ot_param['x_scale'])
