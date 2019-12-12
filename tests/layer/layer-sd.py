@@ -113,8 +113,8 @@ if __name__ == '__main__':
                  'trans_func_type'              : 'smooth_max',  ## smooth_max ## exp ## square ## id ##
                  'epsilon_kl'                   : 1e-2,
                  'lamb_kl'                      : 1.0,
-                 't_scale'                      : 1.0,
-                 'x_scale'                      : 1.0,
+                 't_scale'                      : 10.0,
+                 'x_scale'                      : 10.0,
                  'nt_resampling'                : 128,
                  'sinkhorn_initialization'      : True,
                 #  'Noise'                        : False,
