@@ -43,8 +43,8 @@ if __name__ == '__main__':
         sys.stdout.write('initial_model_style = %s \n' %m_param['initial_model_style'])
         sys.stdout.write('initial_config = %s \n' %m_param['initial_config'])
 
-    # C = C/1000
-    # C0 = C0/1000
+    C = C/1000
+    C0 = C0/1000
 
     # Set up shots
     zmin = d.z.lbound
