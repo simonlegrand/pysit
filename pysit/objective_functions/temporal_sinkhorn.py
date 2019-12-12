@@ -311,6 +311,7 @@ class SinkhornDivergence(ObjectiveFunctionBase):
         dobs_resampled = signal.resample(dobs, self.nt_resampling)
 
         # Use transform function to pre-process the data
+        # print('Pre-processing data with the %s transform function' %self.trans_func)
         tpvs, tpvs_grad = get_function(self.trans_func)
         dobs_pv = tpvs(dobs_resampled)
         dpred_pv = tpvs(dpred_resampled)
@@ -322,18 +323,16 @@ class SinkhornDivergence(ObjectiveFunctionBase):
         if sinkhorn_init is None:
             for i in range(len(dobs_pv)):
                 dis, adj = self._otmmd(dobs_pv[i], dpred_pv[i], self.t_scale, self.x_scale)
-
-            adj = adj*dpred_pv_grad[i]
-            distance += dis
-            adjsrc_resampled += adj
+                adj = adj*dpred_pv_grad[i]
+                distance += dis
+                adjsrc_resampled += adj
         else:
             sinkhorn_output = np.zeros_like(np.copy(sinkhorn_init))
             for i in range(len(dobs_pv)):
                 dis, adj, sinkhorn_output[i] = self._otmmd(dobs_pv[i], dpred_pv[i], self.t_scale, self.x_scale, sinkhorn_init[i])
-
-            adj = adj*dpred_pv_grad[i]
-            distance += dis
-            adjsrc_resampled += adj
+                adj = adj*dpred_pv_grad[i]
+                distance += dis
+                adjsrc_resampled += adj
         
         ##############################################################################
         adj_src = signal.resample(adjsrc_resampled, shape_dobs[0]) #, window=self.resample_window)
