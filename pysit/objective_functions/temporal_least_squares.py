@@ -5,6 +5,7 @@ import numpy as np
 from pysit.objective_functions.objective_function import ObjectiveFunctionBase
 from pysit.util.parallel import ParallelWrapShotNull
 from pysit.modeling.temporal_modeling import TemporalModeling
+from pysit.util.compute_tools import get_function
 
 __all__ = ['TemporalLeastSquares']
 
@@ -17,7 +18,7 @@ class TemporalLeastSquares(ObjectiveFunctionBase):
         a = 'TemporalLeastSquares'
         return a
 
-    def __init__(self, solver, parallel_wrap_shot=ParallelWrapShotNull(), imaging_period = 1):
+    def __init__(self, solver, ot_param=None, parallel_wrap_shot=ParallelWrapShotNull(), imaging_period = 1):
         """imaging_period: Imaging happens every 'imaging_period' timesteps. Use higher numbers to reduce memory consumption at the cost of lower gradient accuracy.
             By assigning this value to the class, it will automatically be used when the gradient function of the temporal objective function is called in an inversion context.
         """
@@ -27,6 +28,9 @@ class TemporalLeastSquares(ObjectiveFunctionBase):
         self.parallel_wrap_shot = parallel_wrap_shot
 
         self.imaging_period = int(imaging_period) #Needs to be an integer
+
+        if ot_param is not None:
+            self.trans_func = ot_param['trans_func_type']
 
     def _residual(self, shot, m0, dWaveOp=None, wavefield=None):
         """Computes residual in the usual sense.
@@ -59,6 +63,24 @@ class TemporalLeastSquares(ObjectiveFunctionBase):
         # timesteps used in the previous forward modeling stage.
         # resid = map(lambda x,y: x.interpolate_data(self.solver.ts())-y, shot.gather(), retval['simdata'])
         resid = shot.receivers.interpolate_data(self.solver.ts()) - retval['simdata']
+
+        #################### test T func
+        # dobs = shot.receivers.interpolate_data(self.solver.ts())
+        # dpred = retval['simdata']
+        # # Use transform function to pre-process the data
+        # print('test T-id function')
+        # tpvs, tpvs_grad = get_function(self.trans_func)
+        # dobs_pv = tpvs(dobs)
+        # dpred_pv = tpvs(dpred)
+        # dpred_pv_grad = tpvs_grad(dpred)
+
+        # # for elem_tpvs in tpvs:
+        # # distance = 0.0
+        # resid = np.zeros(np.shape(dobs))
+        # for i in range(len(dobs_pv)):
+        #     adj = (dobs_pv[i] - dpred_pv[i])*dpred_pv_grad[i]
+        #     resid += adj
+        #################### test T func
 
         # If the second derivative info is needed, copy it out
         if dWaveOp is not None:
