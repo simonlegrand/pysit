@@ -12,6 +12,7 @@ syntax: glob
 *.png
 *.mat
 *.p
+*.txt
 __pycache__
 
 # Ignore .c files by default to avoid including generated code. If you want to
