@@ -16,11 +16,59 @@ __all__ = ['odn2grid', 'odn2grid_data_2D_time', 'odn2grid_data_3D_time',
 
 ep = 2.2204e-16
 
+def get_function(func_id):
+    """
+    Return function from its id
+
+    Parameter
+    ---------
+    func_id : str
+        function id
+
+    Return
+    ------
+    Callable object
+    """
+    switcher = {'id'                : identity,
+                'id2'               : identity2,
+                'exp'               : exponential,
+                'square'            : square,
+                'smooth_max'        : smoothMax,
+               }
+
+    switcher_gradient = {'id'           : identity_gradient,
+                         'id2'          : identity2_gradient,
+                         'exp'          : exponential_gradient,
+                         'square'       : square_gradient,
+                         'smooth_max'   : smoothMax_gradient,
+                        }
+
+    return switcher.get(func_id, None), switcher_gradient.get(func_id, None)
+
 def identity(x):
-    return np.asarray(x, dtype=float)
+    nt=np.shape(x)[0]
+    nx=np.shape(x)[1]
+    a = np.zeros([nt,nx], dtype=float), 
+
+    a[0][:][:] = np.asarray(x, dtype=float)
+
+    return a
 
 def identity_gradient(x):
-    return np.ones_like(np.copy(x), dtype=float)
+    nt=np.shape(x)[0]
+    nx=np.shape(x)[1]
+    a = np.zeros([nt,nx], dtype=float), 
+
+    a[0][:][:] = np.ones_like(np.copy(x), dtype=float)
+    return a
+
+def identity2(x):
+    a = np.asarray(x, dtype=float)
+    return a, a
+
+def identity2_gradient(x):
+    a = np.ones_like(np.copy(x), dtype=float)
+    return a, a
 
 def exponential(x):
     nt=np.shape(x)[0]
@@ -38,6 +86,23 @@ def exponential_gradient(x):
     a[0][:][:] = np.exp(x)
     return a
 
+def square(x):
+    nt=np.shape(x)[0]
+    nx=np.shape(x)[1]
+    a = np.zeros([nt,nx], dtype=float), 
+
+    a[0][:][:] = np.asarray(0.5*(x**2), dtype=float)
+
+    return a
+
+def square_gradient(x):
+    nt=np.shape(x)[0]
+    nx=np.shape(x)[1]
+    a = np.zeros([nt,nx], dtype=float), 
+
+    a[0][:][:] = np.asarray(x, dtype=float)
+    return a
+
 def smoothMax(x):
     x_pos = 0.5 * (x + np.sqrt(x**2 + (ep * np.max(x))**2))
     x_neg = 0.5 * (-x + np.sqrt(x**2 + (ep * np.max(-x))**2))
@@ -48,32 +113,7 @@ def smoothMax_gradient(x):
     dx_neg = 0.5 * (1 - x/(np.sqrt(x**2 + (ep * np.max(-x))**2))) #* (np.exp(d/np.max(d))-0.8) #(d**2)
     return dx_pos, dx_neg
 
-def get_function(func_id):
-    """
-    Return function from its id
-
-    Parameter
-    ---------
-    func_id : str
-        function id
-
-    Return
-    ------
-    Callable object
-    """
-    switcher = {'id'                : identity,
-                'exp'               : exponential,
-                'smooth_max'        : smoothMax,
-               }
-
-    switcher_gradient = {'id'           : identity_gradient,
-                         'exp'          : exponential_gradient,
-                         'smooth_max'   : smoothMax_gradient,
-                        }
-
-    return switcher.get(func_id, None), switcher_gradient.get(func_id, None)
-
-
+###############################################
 def odn2grid(o, d, n):
     output = dict()
     for i in range(len(o)):
