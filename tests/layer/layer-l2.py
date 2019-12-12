@@ -40,8 +40,7 @@ if __name__ == '__main__':
                                       # initial_config={'gradient_slope':0.85},
                                       initial_model_style='layer',
                                       initial_config={'initial_velocity' : (1.7, 3.0),
-                                                      'initial_thickness': (1.0, 5.0)},
-                                     )
+                                                      'initial_thickness': (1.0, 5.0)})
 
     # Set up shots
     zmin = d.z.lbound

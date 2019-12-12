@@ -34,7 +34,7 @@ if __name__ == '__main__':
             #    'initial_config'        : {'freq':1/3000.},
                }
 
-    C, C0, m, d = marmousi(patch=m_param['patch'], 
+    C, C0, m, d = marmousi(patch=m_param['patch'])
                         #    pixel_scale=m_param['pixel_scale'], 
                         #    initial_model_style=m_param['initial_model_style'], 
                         #    initial_config=m_param['initial_config'])

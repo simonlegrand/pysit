@@ -39,7 +39,7 @@ if __name__ == '__main__':
     C, C0, m, d = layered_gradient_medium(model_param=m_param,
                                           dx = 0.05, dz = 0.05,
                                           initial_model_style=m_param['initial_model_style'], 
-                                          initial_config=m_param['initial_config']))
+                                          initial_config=m_param['initial_config'])
 
     if rank == 0:
         sys.stdout.write('initial_model_style = %s \n' %m_param['initial_model_style'])
