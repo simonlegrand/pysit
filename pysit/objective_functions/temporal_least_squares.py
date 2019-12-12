@@ -68,7 +68,7 @@ class TemporalLeastSquares(ObjectiveFunctionBase):
         # dobs = shot.receivers.interpolate_data(self.solver.ts())
         # dpred = retval['simdata']
         # # Use transform function to pre-process the data
-        # print('test T-id function')
+        # print('test T-id2 function')
         # tpvs, tpvs_grad = get_function(self.trans_func)
         # dobs_pv = tpvs(dobs)
         # dpred_pv = tpvs(dpred)
