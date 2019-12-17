@@ -14,7 +14,8 @@ __all__ = ['odn2grid', 'odn2grid_data_2D_time', 'odn2grid_data_3D_time',
            'padding_zeros_fun', 'un_padding_zeros_fun', 'padding_zeros_op', 'envelope_fun',
            'opSmooth1D', 'opSmooth2D', 'get_function']
 
-ep = 2.2204e-16
+# ep = 2.2204e-16
+ep = 1.0e-5           ####epsilon_maxsmooth
 
 def get_function(func_id):
     """
@@ -105,12 +106,16 @@ def square_gradient(x):
 
 def smoothMax(x):
     x_pos = 0.5 * (x + np.sqrt(x**2 + (ep * np.max(x))**2))
-    x_neg = 0.5 * (-x + np.sqrt(x**2 + (ep * np.max(-x))**2))
+    xx = -x
+    x_neg = 0.5 * (xx + np.sqrt(xx**2 + (ep * np.max(xx))**2))
+    # 0.5 * (-x + np.sqrt(x**2 + (ep * np.max(-x))**2))
     return x_pos, x_neg
 
 def smoothMax_gradient(x):
     dx_pos = 0.5 * (1 + x/(np.sqrt(x**2 + (ep * np.max(x))**2))) #* (np.exp(d/np.max(d))-0.8) #(d**2)
-    dx_neg = 0.5 * (1 - x/(np.sqrt(x**2 + (ep * np.max(-x))**2))) #* (np.exp(d/np.max(d))-0.8) #(d**2)
+    xx = -x
+    dx_neg = 0.5 * (1 + xx/(np.sqrt(xx**2 + (ep * np.max(xx))**2)))
+    # -0.5 * (1 - x/(np.sqrt(x**2 + (ep * np.max(-x))**2))) #* (np.exp(d/np.max(d))-0.8) #(d**2)
     return dx_pos, dx_neg
 
 ###############################################
