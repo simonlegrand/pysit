@@ -140,6 +140,7 @@ if __name__ == '__main__':
         print('sinkhorn_t_scale = %.1f' %ot_param['t_scale'])
         print('sinkhorn_x_scale = %.1f' %ot_param['x_scale'])
         print('sinkhorn_nt_resampling = %d' %ot_param['nt_resampling'])
+        print('velocity_bound = %s' %ot_param['velocity_bound'])
 
     objective = SinkhornDivergence(solver, ot_param=ot_param, parallel_wrap_shot=pwrap)
 
