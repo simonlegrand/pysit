@@ -8,13 +8,14 @@ import sys
 import scipy.io as sio
 
 from pysit import *
-from pysit.gallery import bp
+from pysit.gallery import horizontal_reflector
 from pysit.util.io import *
 from pysit.util.parallel import *
 
 from mpi4py import MPI
 
 if __name__ == '__main__':
+    # Setup
     ExpDir = '.'
 
     comm = MPI.COMM_WORLD
@@ -25,45 +26,31 @@ if __name__ == '__main__':
 
     if rank == 0:
         ttt = time.time()
-        sys.stdout.write('BP model \n')
 
-    # Set up domain, mesh and velocity model
-    m_param = {'patch'                 : 'right', 
-               'pixel_scale'           : 'mini', 
-               'initial_model_style'   : 'smooth_low_pass', 
-               'initial_config'        : {'freq':1/3000.},
-               }
-    C, C0, m, d = bp(patch=m_param['patch'], pixel_scale=m_param['pixel_scale'], 
-                    initial_model_style=m_param['initial_model_style'], 
-                    initial_config=m_param['initial_config'])
-    
-    if rank == 0:
-        sys.stdout.write('patch = %s \n' %m_param['patch'])
-        sys.stdout.write('pixel_scale = %s \n' %m_param['pixel_scale'])
-        sys.stdout.write('initial_model_style = %s \n' %m_param['initial_model_style'])
-        sys.stdout.write('initial_config = %s \n' %m_param['initial_config'])
+    #   Define Domain
+    pmlx = PML(0.1, 100)
+    pmlz = PML(0.1, 100)
 
-    m_shape = m._shapes[(False,True)]
-    pmlx = PML(0.5, 1000)
-    pmlz = PML(0.5, 1000)
-
-    x_config = (d.x.lbound/1000.0, d.x.rbound/1000.0, pmlx, pmlx)
-    z_config = (d.z.lbound/1000.0, d.z.rbound/1000.0, pmlz, pmlz)
+    x_config = (0.1, 1.0, pmlx, pmlx)
+    z_config = (0.1, 0.8, pmlz, pmlz)
 
     d = RectangularDomain(x_config, z_config)
-    m = CartesianMesh(d, m_shape[0], m_shape[1])
+    m = CartesianMesh(d, 91, 71)
 
-    C = C/1000
-    C0 = C0/1000
+    if rank == 0:
+        sys.stdout.write('Horizontal reflector medium \n')
+
+    #   Generate true wave speed
+    C, C0, m, d = horizontal_reflector(m)
 
     # Set up shots
     zmin = d.z.lbound
     zmax = d.z.rbound
-    zpos = 0.05 * 5.0
+    zpos = zmin + (1./9.)*zmax
 
     Nshots = size
-    Nreceivers = 301
-    Ric_freq = 5.0
+    Nreceivers = 'max'
+    Ric_freq = 15.0
     sys.stdout.write("{0}: {1}\n".format(rank, Nshots / size))
 
     shots = equispaced_acquisition(m,
@@ -80,13 +67,12 @@ if __name__ == '__main__':
     # shots_freq = copy.deepcopy(shots)
 
     # Define and configure the wave solver
-    t_range = (0.0,6.0)
+    t_range = (0.0,2.5)
 
     solver = ConstantDensityAcousticWave(m,
                                          spatial_accuracy_order=6,
                                          trange=t_range,
-                                         kernel_implementation='cpp',
-                                         ) 
+                                         kernel_implementation='cpp')
 
     # Generate synthetic Seismic data
     if rank == 0:
@@ -104,6 +90,7 @@ if __name__ == '__main__':
     generate_seismic_data(shots, solver, initial_model)
     wavefield_initial = comm.gather(shots[0].receivers.data, root=0)
 
+    # Generate synthetic Seismic data
     base_model = solver.ModelParameters(m,{'C': C})
     tt = time.time()
     generate_seismic_data(shots, solver, base_model)
@@ -127,7 +114,7 @@ if __name__ == '__main__':
                  'trans_func_type'              : 'smooth_max',  ## smooth_max ## exp ## square ## id ##
                  'epsilon_kl'                   : 1e-2,
                  'lamb_kl'                      : 1.0,
-                 't_scale'                      : 10.0,
+                 't_scale'                      : 1.0,
                  'x_scale'                      : 1.0,
                  'nt_resampling'                : 128,
                  'sinkhorn_initialization'      : True,
@@ -148,7 +135,7 @@ if __name__ == '__main__':
         print('Sinkhorn Divergence parameters setting:')
         print('trans_func_type = %s' %ot_param['trans_func_type'])
         print('sinkhorn_initialization = %s' %ot_param['sinkhorn_initialization'])
-        print('sinkhorn_epsilon_kl = %.3f' %ot_param['epsilon_kl'])
+        print('sinkhorn_epsilon_kl = %.1f' %ot_param['epsilon_kl'])
         print('sinkhorn_lamb_kl = %.1f' %ot_param['lamb_kl'])
         print('sinkhorn_t_scale = %.1f' %ot_param['t_scale'])
         print('sinkhorn_x_scale = %.1f' %ot_param['x_scale'])
@@ -156,8 +143,9 @@ if __name__ == '__main__':
 
     objective = SinkhornDivergence(solver, ot_param=ot_param, parallel_wrap_shot=pwrap)
 
-    # Define the inversion algorithm
+    # Define the inversion algorithm   
     line_search = 'backtrack'
+    # line_search = ('constant', 1e-16)
     status_configuration = {'value_frequency'           : 1,
                             'residual_frequency'        : 1,
                             'residual_length_frequency' : 1,
@@ -180,16 +168,19 @@ if __name__ == '__main__':
 
     if rank == 0:
         print('Running LBFGS...')
-        
+
     invalg = LBFGS(objective, memory_length=10)
-    initial_value = solver.ModelParameters(m, {'C': C0})
+    initial_value = solver.ModelParameters(m,{'C': C0})
+
     # Execute inversion algorithm
     tt = time.time()
 
-    nsteps = 50
+    nsteps = 20
     result = invalg(shots, initial_value, nsteps,
-                        line_search=line_search,
-                        status_configuration=status_configuration, verbose=True, write=True)
+                    line_search=line_search,
+                    status_configuration=status_configuration, verbose=True, write=True)
+
+    print('...run time:  {0}s'.format(time.time()-tt))
 
     initial_value.data = result.C
     C_cut = initial_value.without_padding().data
@@ -215,17 +206,17 @@ if __name__ == '__main__':
         ns = int(np.shape(wavefield_true)[0]/2)
 
         output = {'conv': conv_vals,
-                  'inverted': C_inverted,
-                  'true': C.reshape(m.shape(as_grid=True)).transpose(),
-                  'initial': C0.reshape(m.shape(as_grid=True)).transpose(),
-                  'wavefield_true': wavefield_true[ns],
-                  'wavefield_initial': wavefield_initial[ns],
-                  'wavefield_inverted': wavefield_inverted[ns],
-                  'gradient': gradient,
-                  'x_range': [d.x.lbound, d.x.rbound],
-                  'z_range': [d.z.lbound, d.z.rbound],
-                  't_range': t_range,
-                  'obj_name': objective.name(),
-                  }
+                'inverted': C_inverted,
+                'true': C.reshape(m.shape(as_grid=True)).transpose(),
+                'initial': C0.reshape(m.shape(as_grid=True)).transpose(),
+                'wavefield_true': wavefield_true[ns],
+                'wavefield_initial': wavefield_initial[ns],
+                'wavefield_inverted': wavefield_inverted[ns],
+                'gradient': gradient,
+                'x_range': [d.x.lbound, d.x.rbound],
+                'z_range': [d.z.lbound, d.z.rbound],
+                't_range': t_range,
+                'obj_name': objective.name(),
+                }
 
         sio.savemat('./output.mat', output)
