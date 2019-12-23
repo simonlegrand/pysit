@@ -48,7 +48,7 @@ if __name__ == '__main__':
     # Set up shots
     zmin = d.z.lbound
     zmax = d.z.rbound
-    zpos = 0.02 * 1.0
+    zpos = 0.02 * 10.0
 
     Nshots = size
     Nreceivers = 'max'
