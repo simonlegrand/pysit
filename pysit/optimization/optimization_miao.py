@@ -84,6 +84,7 @@ class OptimizationBase(object):
         self.use_parallel = objective.use_parallel()
         self.max_linesearch_iterations = 10
         self.logfile = sys.stdout
+        self.bound = objective.velocity_bound
         self.write = False
 
         self.sinkhorn_init = None
@@ -135,6 +136,17 @@ class OptimizationBase(object):
             # All methods line search somehow
             self.init_history("alpha",       alpha_frequency)
 
+
+    def _bound(self, x):    
+        y = copy.deepcopy(x)
+        idx = np.where(y.data < self.bound[0])
+        y.data[idx] = self.bound[0]
+        idx = np.where(y.data > self.bound[1])
+        y.data[idx] = self.bound[1]
+        idx = np.where(np.isnan(y.data))
+        y.data[idx] = self.bound[1]
+
+        return y
 
     def init_history(self, arg, freq):
         """Initializes a history variable.
@@ -451,6 +463,10 @@ class OptimizationBase(object):
 
                 # Apply new step
                 self.base_model += step
+                ###########################################
+                if self.bound is not None:
+                    y = self._bound(self.base_model)
+                    self.base_model = y
 
                 if self.write is True:
                     if self.use_parallel and (self.objective_function.parallel_wrap_shot.rank != 0):
@@ -592,7 +608,7 @@ class OptimizationBase(object):
 
             if self.objective_function.name() == 'SinkhornDivergence':
                 if self.objective_function.sinkhorn_initialization is True:
-                    fkp1, sinkhorn_output = self.objective_function.evaluate(shots, self.base_model, self.sinkhorn_init, **objective_arguments)
+                    fkp1, sinkhorn_output = self.objective_function.evaluate(shots, model, self.sinkhorn_init, **objective_arguments)
                 else:
                     fkp1 = self.objective_function.evaluate(shots, model, **objective_arguments)
             else:

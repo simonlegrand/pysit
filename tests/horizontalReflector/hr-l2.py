@@ -46,7 +46,8 @@ if __name__ == '__main__':
     # Set up shots
     zmin = d.z.lbound
     zmax = d.z.rbound
-    zpos = zmin + (1./9.)*zmax
+    zpos = 0.20
+    # zpos = zmin + (1./9.)*zmax
 
     Nshots = size
     Nreceivers = 'max'
@@ -67,7 +68,7 @@ if __name__ == '__main__':
     # shots_freq = copy.deepcopy(shots)
 
     # Define and configure the wave solver
-    t_range = (0.0,2.5)
+    t_range = (0.0,2.0)
 
     solver = ConstantDensityAcousticWave(m,
                                          spatial_accuracy_order=6,

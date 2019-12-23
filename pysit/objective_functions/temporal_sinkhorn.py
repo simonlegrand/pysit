@@ -39,6 +39,16 @@ class SinkhornDivergence(ObjectiveFunctionBase):
     def Nt(self):
         return self.nt_resampling
 
+    def _maxp(self, x, eps):
+        """
+        Smooth the max(0, .)
+        """
+        ep = eps * np.max(x)
+        s = 0.5 * (x + np.sqrt(x**2 + ep**2))
+        ds = 0.5 * (1 + x/(np.sqrt(x**2 + ep**2))) #* (np.exp(signal/np.max(signal))-0.8) #(signal**2)
+        #ds = ds/np.max(ds)
+        return s, ds
+
     def __init__(self, solver, ot_param, parallel_wrap_shot=ParallelWrapShotNull(), imaging_period=1):
         """imaging_period: Imaging happens every 'imaging_period' timesteps. Use higher numbers to reduce memory consumption at the cost of lower gradient accuracy.
             By assigning this value to the class, it will automatically be used when the gradient function of the temporal objective function is called in an inversion context.
@@ -62,6 +72,7 @@ class SinkhornDivergence(ObjectiveFunctionBase):
         #self.resample_window = ot_param['resample_window']
         self.nr = ot_param['N_receivers']
         self.sinkhorn_initialization = ot_param['sinkhorn_initialization']
+        self.velocity_bound = ot_param['velocity_bound']
         self.filter_op = ot_param['filter_op']
         self.freq_band = ot_param['freq_band']
 
@@ -310,8 +321,9 @@ class SinkhornDivergence(ObjectiveFunctionBase):
         dpred_resampled = signal.resample(dpred, self.nt_resampling)
         dobs_resampled = signal.resample(dobs, self.nt_resampling)
 
+        # # ####################################################
         # Use transform function to pre-process the data
-        # print('Pre-processing data with the %s transform function' %self.trans_func)
+        print('Pre-processing data with the %s transform function' %self.trans_func)
         tpvs, tpvs_grad = get_function(self.trans_func)
         dobs_pv = tpvs(dobs_resampled)
         dpred_pv = tpvs(dpred_resampled)
@@ -333,8 +345,20 @@ class SinkhornDivergence(ObjectiveFunctionBase):
                 adj = adj*dpred_pv_grad[i]
                 distance += dis
                 adjsrc_resampled += adj
-        
-        ##############################################################################
+        # ########################################################################
+        # print('Without T-function')
+        # epmax = self.epsilon_maxsmooth
+        # p, dp = self._maxp(dobs_resampled, epmax)
+        # pp, dpp = self._maxp(-1*dobs_resampled, epmax)
+        # q, dq = self._maxp(dpred_resampled, epmax)
+        # qq, dqq = self._maxp(-1*dpred_resampled, epmax)
+        # sinkhorn_output = np.zeros_like(np.copy(sinkhorn_init))
+        # dis_pos, adjsrc_resampled_pos, sinkhorn_output[0] = self._otmmd(p, q, self.t_scale, self.x_scale, sinkhorn_init[0])
+        # dis_neg, adjsrc_resampled_neg, sinkhorn_output[1] = self._otmmd(pp, qq, self.t_scale, self.x_scale, sinkhorn_init[1])
+        # adjsrc_resampled = adjsrc_resampled_neg*dqq + adjsrc_resampled_pos*dq
+        # distance = dis_pos + dis_neg
+        # ########################################################################
+
         adj_src = signal.resample(adjsrc_resampled, shape_dobs[0]) #, window=self.resample_window)
 
         # if self.filter_op is True:

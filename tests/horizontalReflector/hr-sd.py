@@ -46,7 +46,8 @@ if __name__ == '__main__':
     # Set up shots
     zmin = d.z.lbound
     zmax = d.z.rbound
-    zpos = zmin + (1./9.)*zmax
+    zpos = 0.20
+    # zpos = zmin + (1./9.)*zmax
 
     Nshots = size
     Nreceivers = 'max'
@@ -67,7 +68,7 @@ if __name__ == '__main__':
     # shots_freq = copy.deepcopy(shots)
 
     # Define and configure the wave solver
-    t_range = (0.0,2.5)
+    t_range = (0.0,2.0)
 
     solver = ConstantDensityAcousticWave(m,
                                          spatial_accuracy_order=6,
@@ -114,10 +115,11 @@ if __name__ == '__main__':
                  'trans_func_type'              : 'smooth_max',  ## smooth_max ## exp ## square ## id ##
                  'epsilon_kl'                   : 1e-2,
                  'lamb_kl'                      : 1.0,
-                 't_scale'                      : 10.0,
-                 'x_scale'                      : 10.0,
+                 't_scale'                      : 1.0,
+                 'x_scale'                      : 1.0,
                  'nt_resampling'                : 128,
-                 'sinkhorn_initialization'      : True,
+                 'sinkhorn_initialization'      : False,
+                 'velocity_bound'               : [1.5, 4.0],
                 #  'Noise'                        : False,
                  'N_receivers'                  : Nreceivers,
                  'filter_op'                    : False,
@@ -135,11 +137,12 @@ if __name__ == '__main__':
         print('Sinkhorn Divergence parameters setting:')
         print('trans_func_type = %s' %ot_param['trans_func_type'])
         print('sinkhorn_initialization = %s' %ot_param['sinkhorn_initialization'])
-        print('sinkhorn_epsilon_kl = %.1f' %ot_param['epsilon_kl'])
+        print('sinkhorn_epsilon_kl = %.2f' %ot_param['epsilon_kl'])
         print('sinkhorn_lamb_kl = %.1f' %ot_param['lamb_kl'])
         print('sinkhorn_t_scale = %.1f' %ot_param['t_scale'])
         print('sinkhorn_x_scale = %.1f' %ot_param['x_scale'])
         print('sinkhorn_nt_resampling = %d' %ot_param['nt_resampling'])
+        print('velocity_bound = %s' %ot_param['velocity_bound'])
 
     objective = SinkhornDivergence(solver, ot_param=ot_param, parallel_wrap_shot=pwrap)
 
