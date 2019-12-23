@@ -321,7 +321,7 @@ class SinkhornDivergence(ObjectiveFunctionBase):
         dpred_resampled = signal.resample(dpred, self.nt_resampling)
         dobs_resampled = signal.resample(dobs, self.nt_resampling)
 
-        # ####################################################
+        # # ####################################################
         # Use transform function to pre-process the data
         print('Pre-processing data with the %s transform function' %self.trans_func)
         tpvs, tpvs_grad = get_function(self.trans_func)
@@ -346,7 +346,7 @@ class SinkhornDivergence(ObjectiveFunctionBase):
                 distance += dis
                 adjsrc_resampled += adj
         # ########################################################################
-        # #print('Without T-function')
+        # print('Without T-function')
         # epmax = self.epsilon_maxsmooth
         # p, dp = self._maxp(dobs_resampled, epmax)
         # pp, dpp = self._maxp(-1*dobs_resampled, epmax)
