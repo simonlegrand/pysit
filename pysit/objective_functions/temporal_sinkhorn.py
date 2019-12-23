@@ -93,7 +93,7 @@ class SinkhornDivergence(ObjectiveFunctionBase):
             a = a_init
             b = b_init
 
-        nerr = int(10)
+        nerr = int(1)
         cvrgce = np.zeros(int(niter/nerr))
         icv = 0  # iteration for errors
         err = 1.0
@@ -118,7 +118,7 @@ class SinkhornDivergence(ObjectiveFunctionBase):
 
         ar = a
         br = b
-        #print('w2_ot converged after %d iterations' %ii)
+        print('w2_ot converged after %d iterations' %ii)
 
         vv = -epsilon * np.log((np.dot(kt.dot(a * p), kx))**pw)
         uu = -epsilon * np.log((np.dot(kt.dot(b * q), kx))**pw)
@@ -161,7 +161,7 @@ class SinkhornDivergence(ObjectiveFunctionBase):
         else:
             a = a_init
 
-        nerr = int(10)
+        nerr = int(1)
         cvrgce = np.zeros(int(niter/nerr))
         icv = 0  # iteration for errors
         err = 1.0
@@ -182,7 +182,7 @@ class SinkhornDivergence(ObjectiveFunctionBase):
                 icv = icv + 1
         ar = a
 
-        #print('w2_mmd converged after %d iterations' %ii)
+        print('w2_mmd converged after %d iterations' %ii)
 
         uu = -epsilon * np.log((np.dot(kt.dot(a * p), kx))**pw)
         at = -lamb * (np.exp(-uu/lamb)-1)
