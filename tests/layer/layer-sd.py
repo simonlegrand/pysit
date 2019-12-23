@@ -135,7 +135,7 @@ if __name__ == '__main__':
         print('Sinkhorn Divergence parameters setting:')
         print('trans_func_type = %s' %ot_param['trans_func_type'])
         print('sinkhorn_initialization = %s' %ot_param['sinkhorn_initialization'])
-        print('sinkhorn_epsilon_kl = %.1f' %ot_param['epsilon_kl'])
+        print('sinkhorn_epsilon_kl = %.2f' %ot_param['epsilon_kl'])
         print('sinkhorn_lamb_kl = %.1f' %ot_param['lamb_kl'])
         print('sinkhorn_t_scale = %.1f' %ot_param['t_scale'])
         print('sinkhorn_x_scale = %.1f' %ot_param['x_scale'])
