@@ -56,6 +56,7 @@ class SinkhornDivergence(ObjectiveFunctionBase):
         self.solver = solver
         self.modeling_tools = TemporalModeling(solver)
         self.parallel_wrap_shot = parallel_wrap_shot
+        self.ns = int(self.parallel_wrap_shot.size/2)
         self.imaging_period = int(imaging_period) #Needs to be an integer
 
         self.sinkhorn_iterations = ot_param['sinkhorn_iterations']
@@ -118,7 +119,11 @@ class SinkhornDivergence(ObjectiveFunctionBase):
 
         ar = a
         br = b
-        print('w2_ot converged after %d iterations' %ii)
+
+        if self.parallel_wrap_shot.use_parallel and (self.parallel_wrap_shot.rank != self.ns):
+            []
+        else:
+            print('w2_ot converged after %d iterations' %ii)
 
         vv = -epsilon * np.log((np.dot(kt.dot(a * p), kx))**pw)
         uu = -epsilon * np.log((np.dot(kt.dot(b * q), kx))**pw)
@@ -182,7 +187,10 @@ class SinkhornDivergence(ObjectiveFunctionBase):
                 icv = icv + 1
         ar = a
 
-        print('w2_mmd converged after %d iterations' %ii)
+        if self.parallel_wrap_shot.use_parallel and (self.parallel_wrap_shot.rank != self.ns):
+            []
+        else:
+            print('w2_mmd converged after %d iterations' %ii)
 
         uu = -epsilon * np.log((np.dot(kt.dot(a * p), kx))**pw)
         at = -lamb * (np.exp(-uu/lamb)-1)
@@ -323,7 +331,11 @@ class SinkhornDivergence(ObjectiveFunctionBase):
 
         # # ####################################################
         # Use transform function to pre-process the data
-        print('Pre-processing data with the %s transform function' %self.trans_func)
+        if self.parallel_wrap_shot.use_parallel and (self.parallel_wrap_shot.rank != self.ns):
+            []
+        else:
+            print('Pre-processing data with the %s transform function' %self.trans_func)
+            
         tpvs, tpvs_grad = get_function(self.trans_func)
         dobs_pv = tpvs(dobs_resampled)
         dpred_pv = tpvs(dpred_resampled)
