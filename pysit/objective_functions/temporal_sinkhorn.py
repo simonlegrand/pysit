@@ -123,6 +123,7 @@ class SinkhornDivergence(ObjectiveFunctionBase):
         if self.parallel_wrap_shot.use_parallel and (self.parallel_wrap_shot.rank != self.ns):
             []
         else:
+            []
             print('w2_ot converged after %d iterations' %ii)
 
         vv = -epsilon * np.log((np.dot(kt.dot(a * p), kx))**pw)
@@ -190,6 +191,7 @@ class SinkhornDivergence(ObjectiveFunctionBase):
         if self.parallel_wrap_shot.use_parallel and (self.parallel_wrap_shot.rank != self.ns):
             []
         else:
+            []
             print('w2_mmd converged after %d iterations' %ii)
 
         uu = -epsilon * np.log((np.dot(kt.dot(a * p), kx))**pw)
@@ -331,11 +333,12 @@ class SinkhornDivergence(ObjectiveFunctionBase):
 
         # # ####################################################
         # Use transform function to pre-process the data
-        if self.parallel_wrap_shot.use_parallel and (self.parallel_wrap_shot.rank != self.ns):
-            []
-        else:
-            print('Pre-processing data with the %s transform function' %self.trans_func)
-            
+        # if self.parallel_wrap_shot.use_parallel and (self.parallel_wrap_shot.rank != self.ns):
+        #     []
+        # else:
+        #     []
+        #     print('Pre-processing data with the %s transform function' %self.trans_func)
+
         tpvs, tpvs_grad = get_function(self.trans_func)
         dobs_pv = tpvs(dobs_resampled)
         dpred_pv = tpvs(dpred_resampled)
@@ -364,10 +367,13 @@ class SinkhornDivergence(ObjectiveFunctionBase):
         # pp, dpp = self._maxp(-1*dobs_resampled, epmax)
         # q, dq = self._maxp(dpred_resampled, epmax)
         # qq, dqq = self._maxp(-1*dpred_resampled, epmax)
-        # sinkhorn_output = np.zeros_like(np.copy(sinkhorn_init))
-        # dis_pos, adjsrc_resampled_pos, sinkhorn_output[0] = self._otmmd(p, q, self.t_scale, self.x_scale, sinkhorn_init[0])
-        # dis_neg, adjsrc_resampled_neg, sinkhorn_output[1] = self._otmmd(pp, qq, self.t_scale, self.x_scale, sinkhorn_init[1])
-        # adjsrc_resampled = adjsrc_resampled_neg*dqq + adjsrc_resampled_pos*dq
+        # # sinkhorn_output = np.zeros_like(np.copy(sinkhorn_init))
+        # # dis_pos, adjsrc_resampled_pos, sinkhorn_output[0] = self._otmmd(p, q, self.t_scale, self.x_scale, sinkhorn_init[0])
+        # # dis_neg, adjsrc_resampled_neg, sinkhorn_output[1] = self._otmmd(pp, qq, self.t_scale, self.x_scale, sinkhorn_init[1])
+
+        # dis_pos, adjsrc_resampled_pos = self._otmmd(p, q, self.t_scale, self.x_scale)
+        # dis_neg, adjsrc_resampled_neg = self._otmmd(pp, qq, self.t_scale, self.x_scale)
+        # adjsrc_resampled = adjsrc_resampled_neg*dqq - adjsrc_resampled_pos*dq
         # distance = dis_pos + dis_neg
         # ########################################################################
 
