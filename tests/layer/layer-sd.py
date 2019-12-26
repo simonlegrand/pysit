@@ -116,7 +116,7 @@ if __name__ == '__main__':
                  't_scale'                      : 10.0,
                  'x_scale'                      : 10.0,
                  'nt_resampling'                : 128,
-                 'sinkhorn_initialization'      : True,
+                 'sinkhorn_initialization'      : False,
                  'velocity_bound'               : None,  # [1.5, 4.0], # None
                 #  'Noise'                        : False,
                  'N_receivers'                  : Nreceivers,
@@ -174,7 +174,7 @@ if __name__ == '__main__':
     # Execute inversion algorithm
     tt = time.time()
 
-    nsteps = 300
+    nsteps = 50
     result = invalg(shots, initial_value, nsteps,
                         line_search=line_search,
                         status_configuration=status_configuration, verbose=True, write=True)
