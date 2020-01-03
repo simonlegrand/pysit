@@ -72,20 +72,40 @@ def identity2_gradient(x):
     return a, a
 
 def exponential(x):
-    nt=np.shape(x)[0]
-    nx=np.shape(x)[1]
-    a = np.zeros([nt,nx], dtype=float), 
+    # nt=np.shape(x)[0]
+    # nx=np.shape(x)[1]
+    # a = np.zeros([nt,nx], dtype=float)
+    # b = np.zeros([nt,nx], dtype=float)
+    c=1.0e2
 
-    a[0][:][:] = np.exp(x)
-    return a
+    x_max = np.max(np.abs(x))
+    a = np.exp(c*x)/np.exp(c*x_max)
+    # a[0][:][:] = np.exp(c*x)/np.exp(c*x_max)
+
+    xx = -x
+    # xx_max = np.max(xx)
+    b = np.exp(c*xx)/np.exp(c*x_max)
+    # b[0][:][:] = np.exp(c*xx)/np.exp(c*x_max)
+
+    return a, b
 
 def exponential_gradient(x):
-    nt=np.shape(x)[0]
-    nx=np.shape(x)[1]
-    a = np.zeros([nt,nx], dtype=float), 
+    # nt=np.shape(x)[0]
+    # nx=np.shape(x)[1]
+    # a = np.zeros([nt,nx], dtype=float)
+    # b = np.zeros([nt,nx], dtype=float)
+    c=1.0e2
+    
+    x_max = np.max(np.abs(x))
+    a = c*np.exp(c*x)/np.exp(c*x_max)
+    # a[0][:][:] = c*np.exp(c*x)/np.exp(c*x_max)
 
-    a[0][:][:] = np.exp(x)
-    return a
+    xx = -x
+    # xx_max = np.max(xx)
+    b = -c*np.exp(c*xx)/np.exp(c*x_max)
+    # b[0][:][:] = -c*np.exp(c*xx)/np.exp(c*x_max)
+
+    return a, b
 
 def square(x):
     nt=np.shape(x)[0]
@@ -111,10 +131,9 @@ def smoothMax(x):
     return x_pos, x_neg
 
 def smoothMax_gradient(x):
-    dx_pos = -0.5 * (1 + x/(np.sqrt(x**2 + (ep * np.max(x))**2))) #* (np.exp(d/np.max(d))-0.8) #(d**2)
+    dx_pos = 0.5 * (1 + x/(np.sqrt(x**2 + (ep * np.max(x))**2))) #* (np.exp(d/np.max(d))-0.8) #(d**2)
     xx = -x
-    dx_neg = 0.5 * (1 + xx/(np.sqrt(xx**2 + (ep * np.max(xx))**2)))
-    # -0.5 * (1 - x/(np.sqrt(x**2 + (ep * np.max(-x))**2))) #* (np.exp(d/np.max(d))-0.8) #(d**2)
+    dx_neg = -0.5 * (1 + xx/(np.sqrt(xx**2 + (ep * np.max(xx))**2)))
     return dx_pos, dx_neg
 
 ###############################################
