@@ -352,14 +352,14 @@ class SinkhornDivergence(ObjectiveFunctionBase):
                 dis, adj = self._otmmd(dobs_pv[i], dpred_pv[i], self.t_scale, self.x_scale)
                 adj = adj*dpred_pv_grad[i]
                 distance += dis
-                adjsrc_resampled += adj
+                adjsrc_resampled -= adj
         else:
             sinkhorn_output = np.zeros_like(np.copy(sinkhorn_init))
             for i in range(len(dobs_pv)):
                 dis, adj, sinkhorn_output[i] = self._otmmd(dobs_pv[i], dpred_pv[i], self.t_scale, self.x_scale, sinkhorn_init[i])
                 adj = adj*dpred_pv_grad[i]
                 distance += dis
-                adjsrc_resampled += adj
+                adjsrc_resampled -= adj
         # ########################################################################
         # print('Without T-function')
         # epmax = self.epsilon_maxsmooth
