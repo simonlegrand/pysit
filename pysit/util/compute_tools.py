@@ -14,9 +14,6 @@ __all__ = ['odn2grid', 'odn2grid_data_2D_time', 'odn2grid_data_3D_time',
            'padding_zeros_fun', 'un_padding_zeros_fun', 'padding_zeros_op', 'envelope_fun',
            'opSmooth1D', 'opSmooth2D', 'get_function']
 
-# ep = 2.2204e-16
-ep = 1.0e-5           ####epsilon_maxsmooth
-
 def get_function(func_id):
     """
     Return function from its id
@@ -32,21 +29,27 @@ def get_function(func_id):
     """
     switcher = {'id'                : identity,
                 'id2'               : identity2,
-                'exp'               : exponential,
+                'exp_max'           : exponential_normalizedByMax,
+                'exp_sum'           : exponential_normalizedBySum,
+                'exp_orig'          : exponential_orig,
+                'exp_jd'            : exponential_jd,
                 'square'            : square,
                 'smooth_max'        : smoothMax,
                }
 
     switcher_gradient = {'id'           : identity_gradient,
                          'id2'          : identity2_gradient,
-                         'exp'          : exponential_gradient,
+                         'exp_max'      : exponential_normalizedByMax_gradient,
+                         'exp_sum'      : exponential_normalizedBySum_gradient,
+                         'exp_orig'     : exponential_gradient_orig,
+                         'exp_jd'       : exponential_gradient_jd,
                          'square'       : square_gradient,
                          'smooth_max'   : smoothMax_gradient,
                         }
 
     return switcher.get(func_id, None), switcher_gradient.get(func_id, None)
 
-def identity(x):
+def identity(x, factor=1.0):
     nt=np.shape(x)[0]
     nx=np.shape(x)[1]
     a = np.zeros([nt,nx], dtype=float), 
@@ -55,7 +58,7 @@ def identity(x):
 
     return a
 
-def identity_gradient(x):
+def identity_gradient(x,factor=1.0):
     nt=np.shape(x)[0]
     nx=np.shape(x)[1]
     a = np.zeros([nt,nx], dtype=float), 
@@ -63,78 +66,110 @@ def identity_gradient(x):
     a[0][:][:] = np.ones_like(np.copy(x), dtype=float)
     return a
 
-def identity2(x):
+def identity2(x, factor=1.0):
     a = np.asarray(x, dtype=float)
     return a, a
 
-def identity2_gradient(x):
+def identity2_gradient(x, factor=1.0):
     a = np.ones_like(np.copy(x), dtype=float)
     return a, a
 
-def exponential(x):
-    # nt=np.shape(x)[0]
-    # nx=np.shape(x)[1]
-    # a = np.zeros([nt,nx], dtype=float)
-    # b = np.zeros([nt,nx], dtype=float)
-    c=1.0e2
 
-    x_max = np.max(np.abs(x))
-    a = np.exp(c*x)/np.exp(c*x_max)
-    # a[0][:][:] = np.exp(c*x)/np.exp(c*x_max)
-
-    xx = -x
-    # xx_max = np.max(xx)
-    b = np.exp(c*xx)/np.exp(c*x_max)
-    # b[0][:][:] = np.exp(c*xx)/np.exp(c*x_max)
-
-    return a, b
-
-def exponential_gradient(x):
-    # nt=np.shape(x)[0]
-    # nx=np.shape(x)[1]
-    # a = np.zeros([nt,nx], dtype=float)
-    # b = np.zeros([nt,nx], dtype=float)
-    c=1.0e2
-    
-    x_max = np.max(np.abs(x))
-    a = c*np.exp(c*x)/np.exp(c*x_max)
-    # a[0][:][:] = c*np.exp(c*x)/np.exp(c*x_max)
-
-    xx = -x
-    # xx_max = np.max(xx)
-    b = -c*np.exp(c*xx)/np.exp(c*x_max)
-    # b[0][:][:] = -c*np.exp(c*xx)/np.exp(c*x_max)
-
-    return a, b
-
-def square(x):
+def square(x, factor=1.0):
     nt=np.shape(x)[0]
     nx=np.shape(x)[1]
     a = np.zeros([nt,nx], dtype=float), 
+    a_quadr = 0.5*(x**2)
 
-    a[0][:][:] = np.asarray(0.5*(x**2), dtype=float)
+    a[0][:][:] = np.asarray(a_quadr/np.sum(a_quadr), dtype=float)
 
     return a
 
-def square_gradient(x):
+def square_gradient(x, factor=1.0):
     nt=np.shape(x)[0]
     nx=np.shape(x)[1]
     a = np.zeros([nt,nx], dtype=float), 
+    a_quadr = 0.5*(x**2)
 
-    a[0][:][:] = np.asarray(x, dtype=float)
+    a[0][:][:] = np.asarray(x/np.sum(a_quadr), dtype=float)
     return a
 
-def smoothMax(x):
-    x_pos = 0.5 * (x + np.sqrt(x**2 + (ep * np.max(x))**2))
+def exponential_normalizedByMax(x, factor=1.0):
+    x_max = np.max(x)
+    a = np.exp(factor*x)/np.exp(factor*x_max)
+
     xx = -x
-    x_neg = 0.5 * (xx + np.sqrt(xx**2 + (ep * np.max(xx))**2))
+    xx_max = np.max(xx)
+    b = np.exp(factor*xx)/np.exp(factor*xx_max)
+
+    return a, b
+
+def exponential_normalizedByMax_gradient(x, factor=1.0):   
+    x_max = np.max(x)
+    a = factor*np.exp(factor*x)/np.exp(factor*x_max)
+
+    xx = -x
+    xx_max = np.max(xx)
+    b = -factor*np.exp(factor*xx)/np.exp(factor*xx_max)
+
+    return a, b
+
+def exponential_normalizedBySum(x, factor=1.0):
+    x_sum = np.sum(np.exp(factor*x))
+    a = np.exp(factor*x)/x_sum
+
+    xx = -x
+    b = np.exp(factor*xx)/x_sum
+
+    return a, b
+
+def exponential_normalizedBySum_gradient(x, factor=1.0):
+    x_sum = np.sum(np.exp(factor*x))
+    a = factor*np.exp(factor*x)/x_sum
+
+    xx = -x
+    b = -factor*np.exp(factor*xx)/x_sum
+
+    return a, b
+
+def exponential_orig(x, factor=1.0):
+    a = np.exp(factor*x)
+    xx = -x
+    b = np.exp(factor*xx)
+    return a, b
+
+def exponential_gradient_orig(x, factor=1.0):
+    a = factor*np.exp(factor*x)
+    xx = -x
+    b = -factor*np.exp(factor*xx)
+    return a, b
+
+def exponential_jd(x, factor=1.0):
+    a = factor*np.log(1+np.exp(x/factor))
+    xx = -x
+    b = factor*np.log(1+np.exp(xx/factor))
+    return a, b
+
+def exponential_gradient_jd(x, factor=1.0):
+    a = np.exp(x/factor)/(1+np.exp(x/factor))
+    xx = -x
+    b = -np.exp(xx/factor)/(1+np.exp(xx/factor))
+    return a, b
+
+def smoothMax(x, factor=1.0e-5):
+    # print('Tsm-factor = %.1e' %factor) 
+    x_pos = 0.5 * (x + np.sqrt(x**2 + (factor * np.max(x))**2))
+    xx = -x
+    x_neg = 0.5 * (xx + np.sqrt(xx**2 + (factor * np.max(xx))**2))
     return x_pos, x_neg
 
-def smoothMax_gradient(x):
-    dx_pos = 0.5 * (1 + x/(np.sqrt(x**2 + (ep * np.max(x))**2))) #* (np.exp(d/np.max(d))-0.8) #(d**2)
+def smoothMax_gradient(x, factor=1.0e-5):
+    # print('Tsm-factor = %.1e' %factor) 
+    dx_pos = 0.5 * (1 + x/(np.sqrt(x**2 + (factor * np.max(x))**2))) #* (np.exp(d/np.max(d))-0.8) #(d**2)
     xx = -x
-    dx_neg = -0.5 * (1 + xx/(np.sqrt(xx**2 + (ep * np.max(xx))**2)))
+    dx_neg = -0.5 * (1 + xx/(np.sqrt(xx**2 + (factor * np.max(xx))**2)))
     return dx_pos, dx_neg
+
 
 ###############################################
 def odn2grid(o, d, n):

@@ -142,8 +142,8 @@ if __name__ == '__main__':
                  'trans_func_type'              : 'smooth_max',  # smooth_max//exp_max//exp_sum//exp_orig//exp_jd//square//id;id2// 
                  'trans_func_factor'            : 1.0e-5,    #  epsilon_sm for the smooth_max // k for exp(k*signal)
                  'nt_NormSpace'                 : 128,
-                 'dc_factor'                    : 16,
-                 'muteInit'                     : wavefield_initial, # None
+                 'dc_factor'                    : None,
+                 'muteInit'                     : None, #wavefield_initial, # None
                  'padding'                      : None,  # [nl, nr]
                  'velocity_bound'               : None,  # [1.5, 4.0], # None
                  'filter_op'                    : False,  # True or False
@@ -151,36 +151,15 @@ if __name__ == '__main__':
                  'noise_factor'                 : None, # None or a scalar 0.01
                }
 
-    # # Sinkhorn Divergence objective function
-    # if rank == 0:
-    #     print('Sinkhorn Divergence...')
-    #     print('Sinkhorn Divergence parameters setting:')
-    #     print('sinkhorn-initialization = %s' %ot_param['sinkhorn_initialization'])
-    #     print('sinkhorn-epsilon-kl = %.2f' %ot_param['epsilon_kl'])
-    #     print('sinkhorn-lamb-kl = %.1f' %ot_param['lamb_kl'])
-    #     print('sinkhorn-tscale = %.1f' %ot_param['t_scale'])
-    #     print('sinkhorn-xscale = %.1f' %ot_param['x_scale'])
-    #     print('data-process-type = %s' %ot_param['data_process_type'])
-    #     print('trans-func-type = %s' %ot_param['trans_func_type'])
-    #     print('trans-func-factor = %.1e' %ot_param['trans_func_factor'])
-    #     print('nt-NormSpace = %d' %ot_param['nt_NormSpace'])
-    #     print('dc_factor = %d' %ot_param['dc_factor'])
-    #     if ot_param['muteInit'] is not None:
-    #         print('muteInit = True')
-    #     if ot_param['padding'] is not None:
-    #         print('padding = %s' %ot_param['padding'])
-    #     print('velocity-bound = %s' %ot_param['velocity_bound'])
-    #     print('noise-factor = %s' %ot_param['noise_factor'])
-    #     print('filter-operation = %s' %ot_param['filter_op'])
-    #     if ot_param['filter_op'] is True:
-    #         print('filter-frequency-band = %s' %ot_param['freq_band'])
-
-    # objective = SinkhornDivergence(solver, ot_param=ot_param, parallel_wrap_shot=pwrap)   
-
-    # Least-squares objective function
+    # Sinkhorn Divergence objective function
     if rank == 0:
-        print('Least-squares...')
-        print('Parameters setting:')
+        print('Sinkhorn Divergence...')
+        print('Sinkhorn Divergence parameters setting:')
+        print('sinkhorn-initialization = %s' %ot_param['sinkhorn_initialization'])
+        print('sinkhorn-epsilon-kl = %.2f' %ot_param['epsilon_kl'])
+        print('sinkhorn-lamb-kl = %.1f' %ot_param['lamb_kl'])
+        print('sinkhorn-tscale = %.1f' %ot_param['t_scale'])
+        print('sinkhorn-xscale = %.1f' %ot_param['x_scale'])
         print('data-process-type = %s' %ot_param['data_process_type'])
         print('trans-func-type = %s' %ot_param['trans_func_type'])
         print('trans-func-factor = %.1e' %ot_param['trans_func_factor'])
@@ -196,8 +175,29 @@ if __name__ == '__main__':
         print('filter-operation = %s' %ot_param['filter_op'])
         if ot_param['filter_op'] is True:
             print('filter-frequency-band = %s' %ot_param['freq_band'])
+
+    objective = SinkhornDivergence(solver, ot_param=ot_param, parallel_wrap_shot=pwrap)   
+
+    # # Least-squares objective function
+    # if rank == 0:
+    #     print('Least-squares...')
+    #     print('Parameters setting:')
+    #     print('data-process-type = %s' %ot_param['data_process_type'])
+    #     print('trans-func-type = %s' %ot_param['trans_func_type'])
+    #     print('trans-func-factor = %.1e' %ot_param['trans_func_factor'])
+    #     print('nt-NormSpace = %d' %ot_param['nt_NormSpace'])
+    #     print('dc_factor = %d' %ot_param['dc_factor'])
+    #     if ot_param['muteInit'] is not None:
+    #         print('muteInit = True')
+    #     if ot_param['padding'] is not None:
+    #         print('padding = %s' %ot_param['padding'])
+    #     print('velocity-bound = %s' %ot_param['velocity_bound'])
+    #     print('noise-factor = %s' %ot_param['noise_factor'])
+    #     print('filter-operation = %s' %ot_param['filter_op'])
+    #     if ot_param['filter_op'] is True:
+    #         print('filter-frequency-band = %s' %ot_param['freq_band'])
             
-    objective = TemporalLeastSquares(solver, ot_param=ot_param, parallel_wrap_shot=pwrap)
+    # objective = TemporalLeastSquares(solver, ot_param=ot_param, parallel_wrap_shot=pwrap)
 
     # # Envelope objective function
     # print('Envelope...')

@@ -18,8 +18,22 @@ import re
 import numpy as np
 import pickle
 import matplotlib as mpl
-#mpl.use('Agg')
+if os.environ.get('DISPLAY', '') == '':
+    print('no display found. Using non-interactive Agg backend')
+    mpl.use('Agg')
 import matplotlib.pyplot as plt
+#plt.rcParams["image.cmap"] = 'jet'
+
+#import sys
+#MODULE_PATH = "/scratch/miyu/miniconda3/envs/pysit-v06/lib/python3.6/site-packages/pysit-0.6.dev0-py3.6-linux-x86_64.egg/pysit/__init__.py"
+#MODULE_NAME = "pysit"
+
+#import importlib
+#spec = importlib.util.spec_from_file_location(MODULE_NAME, MODULE_PATH)
+#module = importlib.util.module_from_spec(spec)
+#sys.modules[spec.name] = module 
+#spec.loader.exec_module(module)
+
 from scipy.io import loadmat
 from scipy import signal
 
@@ -39,7 +53,7 @@ def save_convergence_plot(conv, output_dir: str):
     plt.xlabel('Iteration')
     plt.ylabel('Objective value')
     plt.title('FWI convergence curve')
-    plt.xticks(np.arange(10)*np.shape(conv)[1]/10)                               
+    #plt.xticks(np.arange(10)*np.shape(conv)[1]/10)                               
     plt.grid(True)
     fig.savefig(os.path.join(output_dir, 'conv.png')) 
 
@@ -96,10 +110,18 @@ def save_wavefield_plot(wavefield, kind: str, ext: list, clim: list, output_dir:
 
 
 
-def save_wavefields_receiver_plot(wfrs, tt, output_dir: str):
+def save_wavefields_receiver_plot(wfrs, tt, output_dir: str, noise_factor=None):
     """
     Save wavefields receiver into output_dir.
     """
+    if noise_factor is not None:
+        for i in range(np.shape(wfrs['True'])[1]):
+            nt = np.shape(wfrs['True'])[0]
+            noise = np.zeros([nt,1])
+            mu, sigma = 0, np.max(wfrs['True'][:,i])*noise_factor
+            noise=np.random.normal(mu, sigma, nt)
+            wfrs['True'][:,i] = wfrs['True'][:,i] + noise
+
     fig = plt.figure()
     ntr = int(np.shape(wfrs['True'])[1]/3 + 1)
     #tt = (np.arange(np.shape(wfrs['True'])[0]) * dt).transpose()
@@ -312,7 +334,7 @@ if __name__ == "__main__":
         save_velocity_profile_plot(velocity_models[vm], vm, m, clim, abs_path_name)
 
     #### Velocity traces
-    n_tr = 5
+    n_tr = 11
     
     # Velocity traces from normal models
     save_velocity_traces(velocity_models, X_coord, Z_coord, n_tr, 'velocity_trace_', p_dir)
@@ -353,7 +375,13 @@ if __name__ == "__main__":
     save_gradient_plot(output['gradient'].T, m, p_dir)
 
     #### Wavefields - receiver
-    save_wavefields_receiver_plot(wavefields, T_coord, p_dir)
+    noise_factor = float(output['noise_factor'])
+    if noise_factor==0:
+        noise = None
+    else:
+        noise = noise_factor
+
+    save_wavefields_receiver_plot(wavefields, T_coord, p_dir, noise_factor=noise)
 
     #### Wavefields -time
     #save_wavefields_time_plot(wavefields, trange, p_dir)

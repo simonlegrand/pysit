@@ -40,6 +40,7 @@ bin
 var
 sdist
 develop-eggs
+petsc-3.9.1
 .installed.cfg
 setuptools-*.tar.gz
 

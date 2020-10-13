@@ -133,7 +133,8 @@ while [[ true ]]; do
 done
 
 echo "dowloading petsc :"
-curl http://ftp.mcs.anl.gov/pub/petsc/release-snapshots/petsc-3.9.1.tar.gz | tar xz
+#curl http://ftp.mcs.anl.gov/pub/petsc/release-snapshots/petsc-3.9.1.tar.gz | tar xz
+curl https://files.pythonhosted.org/packages/e6/6c/555ad15fd1f9f2d8a044577c2df9fe855a7cd0f47d2716ebf478a2ca0a37/petsc-3.9.1.tar.gz | tar xz
 cd petsc-3.9.1
 if [[ $? -ne 0 ]]; then
 	exit

@@ -6,8 +6,8 @@ from collections import deque
 
 import numpy as np
 
-# from pysit.optimization.optimization import OptimizationBase
-from pysit.optimization.optimization_miao import OptimizationBase
+from pysit.optimization.optimization import OptimizationBase
+#from pysit.optimization.optimization_miao import OptimizationBase
 
 __all__=['LBFGS']
 

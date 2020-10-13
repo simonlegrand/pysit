@@ -5,11 +5,14 @@ from numpy import linalg as la
 import scipy
 from scipy.stats import norm
 from scipy import signal
+from scipy.interpolate import interp1d
 
 from pysit.objective_functions.objective_function import ObjectiveFunctionBase
 from pysit.util.parallel import ParallelWrapShotNull
 from pysit.modeling.temporal_modeling import TemporalModeling
+import pysit.util.compute_tools as cpt
 from pysit.util.compute_tools import get_function
+# from scipy.signal import (cheb2ord, cheby2, convolve, get_window, iirfilter, remez)
 
 try:
     from scipy.signal import sosfilt
@@ -18,14 +21,16 @@ except ImportError:
     from ._sosfilt import _sosfilt as sosfilt
     from ._sosfilt import _zpk2sos as zpk2sos
 
-
 __all__ = ['SinkhornDivergence']  # Sinkhorn Divergence
 
 __docformat__ = "restructuredtext en"
 
+# ep = 2.2204e-16
+
 class SinkhornDivergence(ObjectiveFunctionBase):
     """ How to compute the parts of the objective you need to do optimization """
     
+    # Defintion of functions which are used by /pysit/optimization/optimization.py
     def name(self):
         a = 'SinkhornDivergence'
         return a
@@ -36,18 +41,16 @@ class SinkhornDivergence(ObjectiveFunctionBase):
         else:
             return self.nr 
 
-    def Nt(self):
-        return self.nt_resampling
+    def Nt(self, shots):
+        if self.dc_factor is not None:
+            if (np.shape(shots[0].receivers.data)[0]/self.dc_factor) % 1 == 0:
+                nt = int(np.shape(shots[0].receivers.data)[0]/self.dc_factor)
+            else:
+                nt = int(np.shape(shots[0].receivers.data)[0]/self.dc_factor)+1
+            return nt
+        else:
+            return self.nt_NormSpace
 
-    def _maxp(self, x, eps):
-        """
-        Smooth the max(0, .)
-        """
-        ep = eps * np.max(x)
-        s = 0.5 * (x + np.sqrt(x**2 + ep**2))
-        ds = 0.5 * (1 + x/(np.sqrt(x**2 + ep**2))) #* (np.exp(signal/np.max(signal))-0.8) #(signal**2)
-        #ds = ds/np.max(ds)
-        return s, ds
 
     def __init__(self, solver, ot_param, parallel_wrap_shot=ParallelWrapShotNull(), imaging_period=1):
         """imaging_period: Imaging happens every 'imaging_period' timesteps. Use higher numbers to reduce memory consumption at the cost of lower gradient accuracy.
@@ -56,26 +59,33 @@ class SinkhornDivergence(ObjectiveFunctionBase):
         self.solver = solver
         self.modeling_tools = TemporalModeling(solver)
         self.parallel_wrap_shot = parallel_wrap_shot
-        self.ns = int(self.parallel_wrap_shot.size/2)
         self.imaging_period = int(imaging_period) #Needs to be an integer
 
+        self.nr = ot_param['n_receivers']
+        self.ns = int(self.parallel_wrap_shot.size/2) 
+
+        self.sinkhorn_initialization = ot_param['sinkhorn_initialization']
         self.sinkhorn_iterations = ot_param['sinkhorn_iterations']
         self.sinkhorn_tolerance = ot_param['sinkhorn_tolerance']
-        self.epsilon_maxsmooth = ot_param['epsilon_maxsmooth']
         self.sor = ot_param['successive_over_relaxation']
-        self.trans_func = ot_param['trans_func_type']
-
         self.epsilon_kl = ot_param['epsilon_kl']
         self.lamb_kl = ot_param['lamb_kl']
-        self.x_scale = ot_param['x_scale']
         self.t_scale = ot_param['t_scale']
-        self.nt_resampling = ot_param['nt_resampling']
-        #self.resample_window = ot_param['resample_window']
-        self.nr = ot_param['N_receivers']
-        self.sinkhorn_initialization = ot_param['sinkhorn_initialization']
+        self.x_scale = ot_param['x_scale']
+
+        self.data_process_type = ot_param['data_process_type']
+        self.trans_func = ot_param['trans_func_type']
+        self.trans_factor = ot_param['trans_func_factor']
+        self.nt_NormSpace = ot_param['nt_NormSpace']
+        self.dc_factor = ot_param['dc_factor']
+        self.muteInit = ot_param['muteInit']
+        self.padding = ot_param['padding']
+
+        # self.resample_window = ot_param['resample_window']
         self.velocity_bound = ot_param['velocity_bound']
         self.filter_op = ot_param['filter_op']
         self.freq_band = ot_param['freq_band']
+        self.noise_factor = ot_param['noise_factor']
 
     def _ot(self, ct, cx, p, q, niter, lamb, epsilon, toler, a_init=None, b_init=None):
 
@@ -94,7 +104,7 @@ class SinkhornDivergence(ObjectiveFunctionBase):
             a = a_init
             b = b_init
 
-        nerr = int(1)
+        nerr = int(10)
         cvrgce = np.zeros(int(niter/nerr))
         icv = 0  # iteration for errors
         err = 1.0
@@ -124,7 +134,7 @@ class SinkhornDivergence(ObjectiveFunctionBase):
             []
         else:
             []
-            print('w2_ot converged after %d iterations' %ii)
+            #print('w2_ot converged after %d iterations' %ii)
 
         vv = -epsilon * np.log((np.dot(kt.dot(a * p), kx))**pw)
         uu = -epsilon * np.log((np.dot(kt.dot(b * q), kx))**pw)
@@ -153,7 +163,6 @@ class SinkhornDivergence(ObjectiveFunctionBase):
         else:
             return dis, grad, cvrgce[0:icv], ar, br
 
-
     def _mmd(self, ct, cx, p, niter, lamb, epsilon, toler, a_init=None):
 
         le = lamb + epsilon
@@ -167,7 +176,7 @@ class SinkhornDivergence(ObjectiveFunctionBase):
         else:
             a = a_init
 
-        nerr = int(1)
+        nerr = int(10)
         cvrgce = np.zeros(int(niter/nerr))
         icv = 0  # iteration for errors
         err = 1.0
@@ -192,7 +201,7 @@ class SinkhornDivergence(ObjectiveFunctionBase):
             []
         else:
             []
-            print('w2_mmd converged after %d iterations' %ii)
+            #print('w2_mmd converged after %d iterations' %ii)
 
         uu = -epsilon * np.log((np.dot(kt.dot(a * p), kx))**pw)
         at = -lamb * (np.exp(-uu/lamb)-1)
@@ -211,13 +220,11 @@ class SinkhornDivergence(ObjectiveFunctionBase):
             return dis, grad, cvrgce[0:icv], ar
 
 
-
-    def _otmmd(self, data_obs, data_cal, t_scale, x_scale, sinkhorn_initial=None): #, sinkhorn):
+    def _otmmd(self, data_obs, data_cal, t_scale, x_scale, sinkhorn_initial=None):
         ghk_epsilon = self.epsilon_kl
         ghk_lamb2 = self.lamb_kl
         ghk_niter = self.sinkhorn_iterations
         toler = self.sinkhorn_tolerance
-        epmax = self.epsilon_maxsmooth
 
         ghk_nt = int(np.shape(data_obs)[0])
         ghk_nx = int(np.shape(data_obs)[1])
@@ -241,11 +248,13 @@ class SinkhornDivergence(ObjectiveFunctionBase):
 
         # # Normalise the data
         mass_dobs = np.sum(p)
-        p = p/mass_dobs
-
         mass_dcal = np.sum(q)
+        p = p/mass_dobs
         q = q/mass_dobs
-        
+
+        #print('mass-processed-dobs = %.8f' %mass_dobs)
+        #print('mass-processed-dcal = %.8f' %mass_dcal)
+
         if sinkhorn_initial is None:
             dis, grad, conv = self._ot(ct, cx, p, q, ghk_niter, ghk_lamb2, ghk_epsilon, toler) #, sinkhorn[0], sinkhorn[1])
             dis_p, grad_p, conv_p = self._mmd(ct, cx, p, ghk_niter, ghk_lamb2, ghk_epsilon, toler) #, sinkhorn[2])
@@ -260,6 +269,7 @@ class SinkhornDivergence(ObjectiveFunctionBase):
         gradient = grad - 0.5*grad_q - ghk_epsilon*(1.0-mass_dcal)
 
         adj_src = gradient/mass_dobs
+        # adj_src = gradient*dqs/mass_dobs
 
         if sinkhorn_initial is None:
             return dis, adj_src
@@ -267,7 +277,248 @@ class SinkhornDivergence(ObjectiveFunctionBase):
             return dis, adj_src, sinkhorn_output
 
 
-    def _residual(self, shot, m0, sinkhorn_init=None, dWaveOp=None, wavefield=None):
+    def _data_processing(self, shot, retval, ntn, dp_type=None, iter_dp=None):
+
+        #if shot.background_data is not None:
+        #    dpred = retval['simdata'] - shot.background_data
+        #else:
+        #    dpred = retval['simdata']
+
+        #if shot.receivers.time_window is not None:
+        #    dpred = shot.receivers.time_window(self.solver.ts()) * dpred
+        dpred = retval['simdata']    
+        dobs = shot.receivers.data
+
+        nto = int(np.shape(dobs)[0])
+        ntc = int(np.shape(dpred)[0])
+        nxc = int(np.shape(dpred)[1])
+
+        t0, tf = self.solver.trange
+        to = np.arange(nto)*(tf-t0) / float(nto-1)
+        tc = np.arange(ntc)*(tf-t0) / float(ntc-1)
+        tn = np.arange(ntn)*(tf-t0) / float(ntn-1)
+
+        dobs_interp = shot.receivers.interpolate_data(self.solver.ts())
+
+        # Least square residual
+        resid = dobs_interp - dpred  # Residual is the difference between the observed data and predicted data
+
+        ###################### Mute first arrivals #################
+        if self.muteInit is not None:
+
+            if iter_dp != 0:
+                dinit = self.muteInit[self.parallel_wrap_shot.rank]
+                nti = int(np.shape(dinit)[0])
+                ti = np.arange(nti)*(tf-t0) / float(nti-1)
+
+                f = interp1d(ti, dinit, axis=0, kind='linear', copy=False, bounds_error=False, fill_value=0.0)
+                dinit_obs = f(to)
+                dinit_pred = f(tc)
+
+                dobs = dobs - dinit_obs
+                dpred = dpred - dinit_pred
+                dobs_interp = dobs_interp - dinit_pred
+
+        ###################### Noise  #################
+        if self.noise_factor is not None:
+            for i in range(nxc):
+                noise = np.zeros([nto,1])
+                mu, sigma = 0, np.max(dobs[:,i])*self.noise_factor
+                noise = np.random.normal(mu, sigma, nto)
+                dobs[:,i] = dobs[:,i] + noise
+
+                noise_interp = np.zeros([ntc,1])
+                noise_interp = np.random.normal(mu, sigma, ntc)
+                dobs_interp[:,i] = dobs_interp[:,i] + noise_interp
+
+        # ###################### Filtering  ################# 
+        # if self.filter_op is True:
+        #     n_timesmp = np.shape(dpred)[0]
+        #     T_max = self.solver.tf
+        #     filter_op1 = band_pass_filter(n_timesmp, T_max, freq_band=self.freq_band, transit_freq_length=0.5, padding_zeros=True, nl=500, nr=500)
+
+        #     dobs = filter_op1.__adj_mul__(filter_op1 * dobs)
+        #     dpred = filter_op1.__adj_mul__(filter_op1 * dpred)
+
+        ###################### Zeros-padding #################
+        if self.padding is not None:
+            nl, nr = self.padding
+            win = signal.tukey(10)
+
+            dobs_pad = np.zeros([nto+nl+nr, nx])
+            dobs_interp_pad = np.zeros([ntc+nl+nr, nx])
+            dpred_pad = np.zeros([ntc+nl+nr, nx])
+
+            dobs_pad_win = np.zeros([nto+nl+nr, nx])
+            dobs_interp_pad_win = np.zeros([ntc+nl+nr, nx])
+            dpred_pad_win = np.zeros([ntc+nl+nr, nx])
+
+            for i in range(nxc):
+                dobs_pad[:,i] = cpt.padding_zeros_fun(dobs[:,i], nto, nl, nr)
+                dobs_interp_pad[:,i] = cpt.padding_zeros_fun(dobs_interp[:,i], ntc, nl, nr)
+                dpred_pad[:,i] = cpt.padding_zeros_fun(dpred[:,i], ntc, nl, nr)
+
+                dobs_pad_win[:,i] = signal.convolve(dobs_pad[:,i], win, mode='same') / sum(win)
+                dobs_interp_pad_win[:,i] = signal.convolve(dobs_interp_pad[:,i], win, mode='same') / sum(win)
+                dpred_pad_win[:,i] = signal.convolve(dpred_pad[:,i], win, mode='same') / sum(win)
+
+            # ntop = np.shape(dobs_pad_win)[0]
+            # ntcp = np.shape(dpred_pad_win)[0]
+
+            # dtop = (tf-t0) / float(ntop-1)
+            # dtcp = (tf-t0) / float(ntcp-1)
+
+            # t_smp_ntop = np.linspace(t0-dtop*(nl+nr)), tf+dtop*(nl+nr), ntop)
+            # t_smp_ntpc = np.linspace(t0-dtcp*(nl+nr)), tf+dtcp*(nl+nr), ntcp)
+
+
+        if dp_type == 'IDsT':
+
+            ###################### Down-Sampling ##################
+            dpred_ds = signal.resample(dpred, self.nt_NormSpace)
+            dobs_ds = signal.resample(dobs_interp, self.nt_NormSpace)
+
+            ###################### Transforming ##################
+            tpvs, tpvs_grad = get_function(self.trans_func)
+            dobs_pv = tpvs(dobs_ds, factor=self.trans_factor)
+            dpred_pv = tpvs(dpred_ds, factor=self.trans_factor)
+            dpred_pv_grad = tpvs_grad(dpred_ds, factor=self.trans_factor) 
+
+            return dobs_pv, dpred_pv, dpred_pv_grad, resid, ntc  
+
+        elif dp_type == 'DsT':
+
+            ###################### Down-Sampling ##################
+            dpred_ds = signal.resample(dpred, self.nt_NormSpace)
+            dobs_ds = signal.resample(dobs, self.nt_NormSpace)
+
+            ###################### Transforming ##################
+            tpvs, tpvs_grad = get_function(self.trans_func)
+            dobs_pv = tpvs(dobs_ds, factor=self.trans_factor)
+            dpred_pv = tpvs(dpred_ds, factor=self.trans_factor)
+            dpred_pv_grad = tpvs_grad(dpred_ds, factor=self.trans_factor)
+
+            return dobs_pv, dpred_pv, dpred_pv_grad, resid, ntc
+        
+        elif dp_type == 'IDcT':
+
+            ###################### Interpolating ###############
+            f = interp1d(tc, dpred, axis=0, kind='linear', copy=False, bounds_error=False, fill_value=0.0)
+            dpred_interp = f(to)
+
+            ###################### Decimating ##################
+            dobs_ds = signal.decimate(dobs, self.dc_factor, ftype='fir', axis=0, zero_phase=True)
+            dpred_ds = signal.decimate(dpred_interp, self.dc_factor, ftype='fir', axis=0, zero_phase=True)
+
+            ###################### Transforming ##################
+            tpvs, tpvs_grad = get_function(self.trans_func)
+            dobs_pv = tpvs(dobs_ds, factor=self.trans_factor)
+            dpred_pv = tpvs(dpred_ds, factor=self.trans_factor)
+            dpred_pv_grad = tpvs_grad(dpred_ds, factor=self.trans_factor)
+
+            return dobs_pv, dpred_pv, dpred_pv_grad, resid, ntc
+
+        elif dp_type == 'TDs':
+
+            ####################### Transforming ##################
+            tpvs, tpvs_grad = get_function(self.trans_func)
+            dobs_pv = tpvs(dobs, factor=self.trans_factor)
+            dpred_pv = tpvs(dpred, factor=self.trans_factor)
+            dpred_pv_grad = tpvs_grad(dpred, factor=self.trans_factor)
+
+            ###################### Down-Sampling  #################
+            dobs_pd = np.zeros([2,ntn,nxc], dtype=float)
+            dpred_pd = np.zeros([2,ntn,nxc], dtype=float)
+            dpred_pd_grad = np.zeros([2,ntn,nxc], dtype=float)
+
+            dobs_pd[0][:][:] = signal.resample(dobs_pv[0], self.nt_NormSpace)
+            dobs_pd[1][:][:] = signal.resample(dobs_pv[1], self.nt_NormSpace)
+            dpred_pd[0][:][:] = signal.resample(dpred_pv[0], self.nt_NormSpace) 
+            dpred_pd[1][:][:] = signal.resample(dpred_pv[1], self.nt_NormSpace)   
+            dpred_pd_grad[0][:][:] = signal.resample(dpred_pv_grad[0], self.nt_NormSpace)   
+            dpred_pd_grad[1][:][:] = signal.resample(dpred_pv_grad[1], self.nt_NormSpace)
+
+            # print('test np.maximum(a, 0.0)')
+            # print(np.min(dobs_pd))
+            # print(np.min(dpred_pd))
+            dobs_pd = np.maximum(dobs_pd, 0.0)
+            dpred_pd = np.maximum(dpred_pd, 0.0)
+            # print(np.min(dobs_pd))
+            # print(np.min(dpred_pd))
+
+            return dobs_pd, dpred_pd, dpred_pd_grad, resid, ntc
+
+        elif dp_type == 'ITDc':
+
+            ###################### Interpolating ###############
+            f = interp1d(tc, dpred, axis=0, kind='linear', copy=False, bounds_error=False, fill_value=0.0)
+            dpred_interp = f(to)
+
+            ####################### Transforming ##################
+            tpvs, tpvs_grad = get_function(self.trans_func)
+            dobs_pv = tpvs(dobs, factor=self.trans_factor)
+            dpred_pv = tpvs(dpred_interp, factor=self.trans_factor)
+            dpred_pv_grad = tpvs_grad(dpred_interp, factor=self.trans_factor)
+
+            if (nto/self.dc_factor) % 1 == 0:
+                ntn_dc = int(nto/self.dc_factor)
+            else:
+                ntn_dc = int(nto/self.dc_factor)+1
+            ###################### Decimating ##################
+            dobs_pd = np.zeros([2,ntn_dc,nxc], dtype=float)
+            dpred_pd = np.zeros([2,ntn_dc,nxc], dtype=float)
+            dpred_pd_grad = np.zeros([2,ntn_dc,nxc], dtype=float)
+
+            dobs_pd[0][:][:] = signal.decimate(dobs_pv[0], self.dc_factor, ftype='fir', axis=0, zero_phase=True)
+            dobs_pd[1][:][:] = signal.decimate(dobs_pv[1], self.dc_factor, ftype='fir', axis=0, zero_phase=True)
+            dpred_pd[0][:][:] = signal.decimate(dpred_pv[0], self.dc_factor, ftype='fir', axis=0, zero_phase=True)
+            dpred_pd[1][:][:] = signal.decimate(dpred_pv[1], self.dc_factor, ftype='fir', axis=0, zero_phase=True)
+            dpred_pd_grad[0][:][:] = signal.decimate(dpred_pv_grad[0], self.dc_factor, ftype='fir', axis=0, zero_phase=True)  
+            dpred_pd_grad[1][:][:] = signal.decimate(dpred_pv_grad[1], self.dc_factor, ftype='fir', axis=0, zero_phase=True)
+
+            # print('test np.maximum(a, 0.0)')
+            # print(np.min(dobs_pd))
+            # print(np.min(dpred_pd))
+            dobs_pd = np.maximum(dobs_pd, 0.0)
+            dpred_pd = np.maximum(dpred_pd, 0.0)
+            # print(np.min(dobs_pd))
+            # print(np.min(dpred_pd))
+
+            return dobs_pd, dpred_pd, dpred_pd_grad, resid, ntc
+
+        elif dp_type == 'TI':
+            ###################### Transforming ##################
+            tpvs, tpvs_grad = get_function(self.trans_func)
+            dobs_pv = tpvs(dobs, factor=self.trans_factor)
+            dpred_pv = tpvs(dpred, factor=self.trans_factor)
+            dpred_pv_grad = tpvs_grad(dpred, factor=self.trans_factor)   
+
+            ###################### Interpolating  #################
+            dobs_pd = np.zeros([2,ntn,nxc], dtype=float)
+            dpred_pd = np.zeros([2,ntn,nxc], dtype=float)
+            dpred_pd_grad = np.zeros([2,ntn,nxc], dtype=float)
+
+            fo0 = interp1d(to, dobs_pv[0], axis=0, kind='linear', copy=False, bounds_error=False, fill_value=0.0)
+            fo1 = interp1d(to, dobs_pv[1], axis=0, kind='linear', copy=False, bounds_error=False, fill_value=0.0)
+            fc0 = interp1d(tc, dpred_pv[0], axis=0, kind='linear', copy=False, bounds_error=False, fill_value=0.0)
+            fc1 = interp1d(tc, dpred_pv[1], axis=0, kind='linear', copy=False, bounds_error=False, fill_value=0.0)
+            fcg0 = interp1d(tc, dpred_pv_grad[0], axis=0, kind='linear', copy=False, bounds_error=False, fill_value=0.0)
+            fcg1 = interp1d(tc, dpred_pv_grad[1], axis=0, kind='linear', copy=False, bounds_error=False, fill_value=0.0)
+
+            dobs_pd[0][:][:] = fo0(tn)
+            dobs_pd[1][:][:] = fo1(tn)
+            dpred_pd[0][:][:] = fc0(tn)
+            dpred_pd[1][:][:] = fc1(tn)
+            dpred_pd_grad[0][:][:] = fcg0(tn)
+            dpred_pd_grad[1][:][:] = fcg1(tn)
+
+            return dobs_pd, dpred_pd, dpred_pd_grad, resid, ntc
+
+        else:
+            raise Exception("None data processing type is defined")
+
+
+    def _residual(self, shot, m0, sinkhorn_init=None, iter_rs=None, dWaveOp=None, wavefield=None):
         """Computes residual in the usual sense.
 
         Parameters
@@ -293,95 +544,31 @@ class SinkhornDivergence(ObjectiveFunctionBase):
 
         # Run the forward modeling step
         retval = self.modeling_tools.forward_model(shot, m0, self.imaging_period, return_parameters=rp)
-
         # Compute the residual vector by interpolating the measured data to the
         # timesteps used in the previous forward modeling stage.
         # resid = map(lambda x,y: x.interpolate_data(self.solver.ts())-y, shot.gather(), retval['simdata'])
-        
-        dpred = retval['simdata']
 
-        # if shot.background_data is not None:
-        #     dpred = retval['simdata'] - shot.background_data
-        # else:
-        #     dpred = retval['simdata']
-
-        # if shot.receivers.time_window is None:
-        #     dpred = dpred
-        # else:
-        #     dpred = shot.receivers.time_window(self.solver.ts()) * dpred
-
-        # # Filter data
-        # n_timesmp = np.shape(dpred)[0]
-        # T_max = self.solver.tf
-        # filter_op1 = band_pass_filter(n_timesmp, T_max, freq_band=self.freq_band, transit_freq_length=0.5, padding_zeros=True, nl=500, nr=500)
- 
-        # if self.filter_op is True:
-        #     dobs = filter_op1 * shot.receivers.interpolate_data(self.solver.ts())
-        #     dpred = filter_op1 * dpred
-        # else:
-        #     dobs = shot.receivers.interpolate_data(self.solver.ts())
-
-        dobs = shot.receivers.interpolate_data(self.solver.ts())
-        shape_dobs = np.shape(dobs)
-
-        # Least square residual
-        resid = dobs - dpred  # Residual is the difference between the observed data and predicted data
-
-        # Down-sampling data on time
-        dpred_resampled = signal.resample(dpred, self.nt_resampling)
-        dobs_resampled = signal.resample(dobs, self.nt_resampling)
-
-        # # ####################################################
-        # Use transform function to pre-process the data
-        # if self.parallel_wrap_shot.use_parallel and (self.parallel_wrap_shot.rank != self.ns):
-        #     []
-        # else:
-        #     []
-        #     print('Pre-processing data with the %s transform function' %self.trans_func)
-
-        tpvs, tpvs_grad = get_function(self.trans_func)
-        dobs_pv = tpvs(dobs_resampled)
-        dpred_pv = tpvs(dpred_resampled)
-        dpred_pv_grad = tpvs_grad(dpred_resampled)
+        dobs_pv, dpred_pv, dpred_pv_grad, resid, ntc = self._data_processing(shot, retval, self.nt_NormSpace, dp_type=self.data_process_type, iter_dp=iter_rs)
 
         # for elem_tpvs in tpvs:
         distance = 0.0
-        adjsrc_resampled = np.zeros(np.shape(dobs_resampled))
+        adjsrc_ds = np.zeros([np.shape(dobs_pv)[1], np.shape(dobs_pv)[2]])
         if sinkhorn_init is None:
             for i in range(len(dobs_pv)):
                 dis, adj = self._otmmd(dobs_pv[i], dpred_pv[i], self.t_scale, self.x_scale)
                 adj = adj*dpred_pv_grad[i]
                 distance += dis
-                adjsrc_resampled -= adj
+                adjsrc_ds -= adj
         else:
             sinkhorn_output = np.zeros_like(np.copy(sinkhorn_init))
             for i in range(len(dobs_pv)):
                 dis, adj, sinkhorn_output[i] = self._otmmd(dobs_pv[i], dpred_pv[i], self.t_scale, self.x_scale, sinkhorn_init[i])
                 adj = adj*dpred_pv_grad[i]
                 distance += dis
-                adjsrc_resampled -= adj
-        # ########################################################################
-        # print('Without T-function')
-        # epmax = self.epsilon_maxsmooth
-        # p, dp = self._maxp(dobs_resampled, epmax)
-        # pp, dpp = self._maxp(-1*dobs_resampled, epmax)
-        # q, dq = self._maxp(dpred_resampled, epmax)
-        # qq, dqq = self._maxp(-1*dpred_resampled, epmax)
-        # # sinkhorn_output = np.zeros_like(np.copy(sinkhorn_init))
-        # # dis_pos, adjsrc_resampled_pos, sinkhorn_output[0] = self._otmmd(p, q, self.t_scale, self.x_scale, sinkhorn_init[0])
-        # # dis_neg, adjsrc_resampled_neg, sinkhorn_output[1] = self._otmmd(pp, qq, self.t_scale, self.x_scale, sinkhorn_init[1])
-
-        # dis_pos, adjsrc_resampled_pos = self._otmmd(p, q, self.t_scale, self.x_scale)
-        # dis_neg, adjsrc_resampled_neg = self._otmmd(pp, qq, self.t_scale, self.x_scale)
-        # adjsrc_resampled = adjsrc_resampled_neg*dqq - adjsrc_resampled_pos*dq
-        # distance = dis_pos + dis_neg
-        # ########################################################################
-
-        adj_src = signal.resample(adjsrc_resampled, shape_dobs[0]) #, window=self.resample_window)
-
-        # if self.filter_op is True:
-        #     adj_src = filter_op1.__adj_mul__(adj_src)
-
+                adjsrc_ds -= adj
+   
+        adj_src = signal.resample(adjsrc_ds, ntc) #, window=self.resample_window)
+        
         # If the second derivative info is needed, copy it out
         if dWaveOp is not None:
             dWaveOp[:]  = retval['dWaveOp'][:]
@@ -423,7 +610,7 @@ class SinkhornDivergence(ObjectiveFunctionBase):
         else:
             return objective_value, sinkhorn_output
 
-    def _gradient_helper(self, shot, m0, sinkhorn_init=None, ignore_minus=False, ret_pseudo_hess_diag_comp = False, **kwargs):
+    def _gradient_helper(self, shot, m0, sinkhorn_init=None, iter_gh=None, ignore_minus=False, ret_pseudo_hess_diag_comp = False, **kwargs):
         """Helper function for computing the component of the gradient due to a
         single shot.
 
@@ -448,9 +635,9 @@ class SinkhornDivergence(ObjectiveFunctionBase):
             wavefield=None
         
         if sinkhorn_init is None:
-            r, dis, adjoint_src = self._residual(shot, m0, dWaveOp=dWaveOp, wavefield=wavefield, **kwargs)
+            r, dis, adjoint_src = self._residual(shot, m0, iter_rs=iter_gh, dWaveOp=dWaveOp, wavefield=wavefield, **kwargs)
         else:
-            r, dis, adjoint_src, sinkhorn_output = self._residual(shot, m0, sinkhorn_init, dWaveOp=dWaveOp, wavefield=wavefield, **kwargs)
+            r, dis, adjoint_src, sinkhorn_output = self._residual(shot, m0, sinkhorn_init, iter_rs=iter_gh, dWaveOp=dWaveOp, wavefield=wavefield, **kwargs)
 
         # Perform the migration or F* operation to get the gradient component
         g = self.modeling_tools.migrate_shot(shot, m0, adjoint_src, self.imaging_period, dWaveOp=dWaveOp, wavefield=wavefield)
@@ -465,7 +652,7 @@ class SinkhornDivergence(ObjectiveFunctionBase):
                 return r, g, dis, adjoint_src
             else:
                 return r, g, dis, adjoint_src, sinkhorn_output
-                
+
     def _pseudo_hessian_diagonal_component_shot(self, dWaveOp):
         #Shin 2001: "Improved amplitude preservation for prestack depth migration by inverse scattering theory". 
         #Basic illumination compensation. In here we compute the diagonal. It is not perfect, it does not include receiver coverage for instance.
@@ -485,7 +672,7 @@ class SinkhornDivergence(ObjectiveFunctionBase):
 
         return pseudo_hessian_diag_contrib
 
-    def compute_gradient(self, shots, m0, sinkhorn_init=None, aux_info={}, **kwargs):
+    def compute_gradient(self, shots, m0, sinkhorn_init=None, iter_nb=None, aux_info={}, **kwargs):
         """Compute the gradient for a set of shots.
 
         Computes the gradient as
@@ -511,10 +698,10 @@ class SinkhornDivergence(ObjectiveFunctionBase):
                 pseudo_h_diag += h 
             else:
                 if sinkhorn_init is None:
-                    r, g, dis, adjoint_src = self._gradient_helper(shot, m0, ignore_minus=True, **kwargs)
+                    r, g, dis, adjoint_src = self._gradient_helper(shot, m0, iter_gh=iter_nb, ignore_minus=True, **kwargs)
                 else:
-                    r, g, dis, adjoint_src, sinkhorn_output = self._gradient_helper(shot, m0, sinkhorn_init, ignore_minus=True, **kwargs)
-
+                    r, g, dis, adjoint_src, sinkhorn_output = self._gradient_helper(shot, m0, sinkhorn_init, iter_gh=iter_nb, ignore_minus=True, **kwargs)
+            
             grad -= g # handle the minus 1 in the definition of the gradient of this objective
             r_norm2 += np.linalg.norm(r)**2
             objective_value += dis
