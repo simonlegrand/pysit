@@ -74,13 +74,15 @@ class TemporalLeastSquares(ObjectiveFunctionBase):
         # timesteps used in the previous forward modeling stage.
         # resid = map(lambda x,y: x.interpolate_data(self.solver.ts())-y, shot.gather(), retval['simdata'])
 
-        if shot.background_data is not None:
-            dpred = retval['simdata'] - shot.background_data
-        else:
-            dpred = retval['simdata']
+        #if shot.background_data is not None:
+        #    dpred = retval['simdata'] - shot.background_data
+        #else:
+        #    dpred = retval['simdata']
 
-        if shot.receivers.time_window is not None:
-            dpred = shot.receivers.time_window(self.solver.ts()) * dpred
+        #if shot.receivers.time_window is not None:
+        #    dpred = shot.receivers.time_window(self.solver.ts()) * dpred
+        
+        dpred = retval['simdata']
 
         dobs = shot.receivers.interpolate_data(self.solver.ts())
         shape_dobs = np.shape(dobs)
