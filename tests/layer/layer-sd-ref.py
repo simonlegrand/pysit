@@ -16,10 +16,6 @@ from pysit.util.parallel import *
 from mpi4py import MPI
 
 if __name__ == '__main__':
-    # Setup
-    RootDir = '/scratch/miyu/results-pysit/'
-    SubDir = ''
-    # ExpDir = RootDir + SubDir
 
     ExpDir = '.'
 
@@ -57,7 +53,6 @@ if __name__ == '__main__':
     Nshots = size
     Nreceivers = 301
     Ric_freq = 15.0
-    sys.stdout.write("{0}: {1}\n".format(rank, Nshots / size))
 
     shots = equispaced_acquisition(m,
                                    RickerWavelet(Ric_freq),
@@ -70,7 +65,6 @@ if __name__ == '__main__':
                                    parallel_shot_wrap=pwrap,
                                    )
 
-    # shots_freq = copy.deepcopy(shots)
 
     # Define and configure the wave solver
     t_range = (0.0,4.0)
@@ -178,51 +172,6 @@ if __name__ == '__main__':
 
     objective = SinkhornDivergence(solver, ot_param=ot_param, parallel_wrap_shot=pwrap)   
 
-    # # Least-squares objective function
-    # if rank == 0:
-    #     print('Least-squares...')
-    #     print('Parameters setting:')
-    #     print('data-process-type = %s' %ot_param['data_process_type'])
-    #     print('trans-func-type = %s' %ot_param['trans_func_type'])
-    #     print('trans-func-factor = %.1e' %ot_param['trans_func_factor'])
-    #     print('nt-NormSpace = %d' %ot_param['nt_NormSpace'])
-    #     print('dc_factor = %d' %ot_param['dc_factor'])
-    #     if ot_param['muteInit'] is not None:
-    #         print('muteInit = True')
-    #     if ot_param['padding'] is not None:
-    #         print('padding = %s' %ot_param['padding'])
-    #     print('velocity-bound = %s' %ot_param['velocity_bound'])
-    #     print('noise-factor = %s' %ot_param['noise_factor'])
-    #     print('filter-operation = %s' %ot_param['filter_op'])
-    #     if ot_param['filter_op'] is True:
-    #         print('filter-frequency-band = %s' %ot_param['freq_band'])
-            
-    # objective = TemporalLeastSquares(solver, ot_param=ot_param, parallel_wrap_shot=pwrap)
-
-    # # Envelope objective function
-    # print('Envelope...')
-    # objective = TemporalEnvelope(solver, envelope_power=2.0, filter_op=filter_op1, imaging_period=1, parallel_wrap_shot=pwrap)
-
-    # # Cross-correlation objective function
-    # print('Cross-correlation...')
-    # objective = TemporalCorrelate(solver, filter_op=filter_op1, imaging_period=1, parallel_wrap_shot=pwrap)   
-
-    # # Optimal transportation objective function with linear transformation
-    # print('Ot with linear transformation...')
-    # objective = TemporalOptimalTransport(solver, filter_op=filter_op1, imaging_period=1, transform_mode='linear', c_ratio=2.0, parallel_wrap_shot=pwrap)
-
-    # # Optimal transportation objective function with quadratic transformation
-    # print('Ot with quadratic transformation...')
-    # objective = TemporalOptimalTransport(solver, filter_op=filter_op1, imaging_period=1, transform_mode='quadratic', parallel_wrap_shot=pwrap)
-
-    # # Optimal transportation objective function with absolute transformation
-    # print('Ot with absolute transformation...')
-    # objective = TemporalOptimalTransport(solver, filter_op=filter_op1, imaging_period=1, transform_mode='absolute', parallel_wrap_shot=pwrap)
-
-    # # Optimal transportation objective function with exponential transformation
-    # print('Ot with exponential transformation...')
-    # objective = TemporalOptimalTransport(solver, filter_op=filter_op1, imaging_period=1, transform_mode='exponential', exp_a=1.0, parallel_wrap_shot=pwrap)  
-
 
     # Define the inversion algorithm
     line_search = 'backtrack'
@@ -238,13 +187,6 @@ if __name__ == '__main__':
                             'alpha_frequency'           : 1,
                             }
 
-    # print('Running GradientDescent...')
-    # invalg = GradientDescent(objective)
-
-    # print('Running PQN...')
-    # bound = [1.5, 6.5]
-    # Proj_Op1 = BoxConstraintPrj(bound)
-    # invalg_1 = PQN(objective, proj_op=Proj_Op1, memory_length=10)
 
     if rank==0:
         print('Running LBFGS...')
