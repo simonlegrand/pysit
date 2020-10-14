@@ -86,7 +86,14 @@ On all platforms (Linux, Windows 7 or greater, and MAC OS X), we recommend a pre
 
     where `YourComputerName` stands for the actual name of your computer.
 
-3. (Optionnal but recommended) Install mpi4py:
+2.bis On OS X you can install petsc with brew nowr. It comes with MPI by dependence.
+
+    ```sh
+    brew install petsc
+    ```
+
+3. (Optionnal but recommended) Install mpi4py. Pip with automatically look for
+an MPI installation and link mpi4py with it:
 
     ```sh
     pip install mpi4py
