@@ -132,7 +132,7 @@ if __name__ == '__main__':
     ot_param = { 'n_receivers'                  : Nreceivers,
                  'sinkhorn_iterations'          : 10000,
                  'sinkhorn_tolerance'           : 1.0e-9,
-                 'successive_over_relaxation'   : 1.4,
+                 'successive_over_relaxation'   : 1.,
                  'sinkhorn_initialization'      : True,  # True or False
                  'epsilon_kl'                   : 1e-2,
                  'lamb_kl'                      : 0.1,
